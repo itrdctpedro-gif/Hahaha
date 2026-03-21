@@ -989,256 +989,229 @@ TrollTab:AddButton({
 
 
 
+--==============================
+-- VARIÁVEIS
+--==============================
 
--- Variáveis globais de controle
-local killRunning = false
-local killSitConn = nil
-local killThread = nil
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
--- Função para parar qualquer kill em andamento
-local function stopKill()
-    if killRunning then
-        killRunning = false
-        if killSitConn then
-            killSitConn:Disconnect()
-            killSitConn = nil
-        end
-        if killThread then
-            -- A thread vai perceber que killRunning é false e sair
-            killThread = nil
-        end
-        -- Opcional: desequipar ferramentas se necessário
-        local char = plr.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum:UnequipTools()
-            end
-        end
+local plr = Players.LocalPlayer
+
+local selectedMethod = "Sofa"
+local running = false
+local stopFlag = false
+
+--==============================
+-- DROPDOWN
+--==============================
+
+TrollTab:AddDropdown({
+    Name = "Método Kill",
+    Options = {"Sofa","Bus","Boat"},
+    CurrentOption = "Sofa",
+    Callback = function(opt)
+        selectedMethod = opt
     end
-end
+})
 
--- Função principal que executa o kill conforme o método escolhido
-local function executeKill(method)
-    if killRunning then
-        stopKill()
-        task.wait(0.2) -- Pequeno delay para garantir que parou
-    end
+--==============================
+-- BOTÃO KILL
+--==============================
 
-    if not selectedPlayer then
-        print("Nenhum jogador selecionado")
-        return
-    end
+TrollTab:AddButton({
+    Name = "KILL",
+    Callback = function()
 
-    local target = Players:FindFirstChild(selectedPlayer)
-    if not target or not target.Character then
-        print("Alvo inválido")
-        return
-    end
+        if running or not selectedPlayer then return end
 
-    local plrChar = plr.Character
-    if not plrChar then return end
+        stopFlag = false
 
-    local plrHumanoid = plrChar:FindFirstChildOfClass("Humanoid")
-    local plrHRP = plrChar:FindFirstChild("HumanoidRootPart")
-    if not plrHumanoid or not plrHRP then return end
+        local character = plr.Character
+        if not character then return end
 
-    local targetHumanoid = target.Character:FindFirstChild("Humanoid")
-    local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHumanoid or not targetHRP then return end
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        local hrp = character:FindFirstChild("HumanoidRootPart")
 
-    -- Configura variáveis de controle
-    killRunning = true
-    local seated = false
+        if not humanoid or not hrp then return end
 
-    -- Função que será chamada quando o alvo sentar
-    local function onTargetSeated(active)
-        if active and killRunning then
-            seated = true
-            killRunning = false -- Para o loop de movimento
+        local target = Players:FindFirstChild(selectedPlayer)
+        if not target or not target.Character then return end
 
-            if killSitConn then
-                killSitConn:Disconnect()
-                killSitConn = nil
-            end
+        local targetHumanoid = target.Character:FindFirstChild("Humanoid")
+        local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
 
-            -- Executa a ação específica de cada método após o alvo sentar
-            if method == "couch" then
-                -- Sofá: teleporta para posição específica, desequipa ferramentas e teleporta de volta
-                plrHRP.CFrame = CFrame.new(-54.24, -298.21, -184.12)
-                task.wait(0.3)
-                plrHumanoid:UnequipTools()
-                task.wait(0.7)
-                plrHRP.CFrame = CFrame.new(-27.59, 4.27, -16.84)
+        if not targetHumanoid or not targetHRP then return end
 
-            elseif method == "bus" or method == "boat" then
-                -- Ônibus e Barco: teleporta para Y = -400, pula e espera cair até -450, depois volta ao spawn de veículos
-                plrHRP.CFrame = CFrame.new(plrHRP.Position.X, -400, plrHRP.Position.Z)
-                plrHumanoid.Jump = true
+        running = true
 
-                task.spawn(function()
-                    while killRunning and plrHRP.Position.Y > -450 do
-                        task.wait()
-                    end
-                    -- Volta ao spawn de veículos (pode ajustar conforme necessário)
-                    plrHRP.CFrame = CFrame.new(1181.83, 76.08, -1158.83)
-                end)
-            end
-        end
-    end
+        --==============================
+        -- FUNÇÃO DE MOVIMENTO
+        --==============================
 
-    -- Configura o evento Seated do alvo
-    killSitConn = targetHumanoid.Seated:Connect(onTargetSeated)
+        local function followTarget()
 
-    -- Agora executa o setup específico de cada método
-    if method == "couch" then
-        -- Aumenta tamanho do corpo
-        for i = 1, 12 do
-            ReplicatedStorage.Remotes.IncrementBodySize:FireServer(false)
-        end
-
-        -- Pega o sofá
-        local hasCouch = false
-        if plrChar:FindFirstChild("Couch") then
-            hasCouch = true
-        end
-        for _, tool in ipairs(plr.Backpack:GetChildren()) do
-            if tool.Name == "Couch" then
-                hasCouch = true
-            end
-        end
-
-        if not hasCouch then
-            ReplicatedStorage.RE["1Too1l"]:InvokeServer("PickingTools", "Couch")
-            task.wait(0.3)
-        end
-
-        local couch = plr.Backpack:FindFirstChild("Couch")
-        if couch then
-            plrHumanoid:EquipTool(couch)
-        end
-
-        task.wait(0.2)
-        plrHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, -2)
-
-    elseif method == "bus" then
-        -- Teleporta para spawn de veículos
-        plrHRP.CFrame = CFrame.new(1181.83, 76.08, -1158.83)
-        task.wait(0.3)
-
-        -- Limpa veículos e spawna ônibus
-        pcall(function()
-            ReplicatedStorage.RE["1Ca1r"]:FireServer("DeleteAllVehicles")
-        end)
-        pcall(function()
-            ReplicatedStorage.RE["1Ca1r"]:FireServer("PickingCar", "SchoolBus")
-        end)
-
-        -- Aguarda o ônibus aparecer
-        local bus
-        repeat
-            task.wait()
-            bus = Workspace.Vehicles:FindFirstChild(plr.Name .. "Car")
-        until bus
-
-        -- Posiciona para sentar
-        plrHRP.CFrame = CFrame.new(1171.46, 84.27, -1166.66)
-        task.wait(0.5)
-
-        local seat = bus:FindFirstChildWhichIsA("VehicleSeat") or bus:FindFirstChildWhichIsA("Seat")
-        if seat then
-            seat:Sit(plrHumanoid)
-        end
-
-        -- Aguarda sentar
-        repeat task.wait() until plrHumanoid.Sit
-
-        -- Teleporta para perto do alvo
-        plrHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, -3)
-
-    elseif method == "boat" then
-        -- Teleporta para spawn do barco
-        plrHRP.CFrame = CFrame.new(1761.91, -4.00, 69.07) * CFrame.Angles(0, math.rad(-6.93), 0)
-        task.wait(0.4)
-
-        -- Spawna barco
-        local args = { "PickingBoat", "FishingBoat", "Boat" }
-        ReplicatedStorage.RE["1Ca1r"]:FireServer(unpack(args))
-
-        task.wait(0.7)
-
-        -- Posiciona para sentar
-        plrHRP.CFrame = CFrame.new(1767.14, 0.70, 54.58) * CFrame.Angles(math.rad(0.25), math.rad(83.03), 0)
-
-        -- Aguarda sentar
-        repeat task.wait() until plrHumanoid.Sit
-
-        -- Teleporta para perto do alvo
-        plrHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, -3)
-    end
-
-    -- Se o método não for couch (bus ou boat), ou mesmo couch, iniciamos o loop de movimento
-    -- O loop só é necessário se ainda não estiver sentado (no caso do couch, o loop é executado)
-    if killRunning then
-        killThread = task.spawn(function()
             local tickSide = 1
-            while killRunning and not seated do
+
+            while running and not stopFlag do
+
                 if not target.Character then break end
 
                 local base = targetHRP.Position
+
                 local offsets = {
-                    Vector3.new(3 * tickSide, 0, 0),
-                    Vector3.new(-3 * tickSide, 0, 0),
-                    Vector3.new(0, 0, 3 * tickSide),
-                    Vector3.new(0, 0, -3 * tickSide),
-                    Vector3.new(0, 3, 0),
-                    Vector3.new(0, -3, 0),
-                    Vector3.new(1.5, -3.2, 1.5),
-                    Vector3.new(-1.5, -3.2, -1.5)
+                    Vector3.new(3 * tickSide,0,0),
+                    Vector3.new(-3 * tickSide,0,0),
+                    Vector3.new(0,0,3 * tickSide),
+                    Vector3.new(0,0,-3 * tickSide),
+                    Vector3.new(0,3,0),
+                    Vector3.new(0,-3,0),
+                    Vector3.new(1.5,-3.2,1.5),
+                    Vector3.new(-1.5,-3.2,-1.5)
                 }
 
-                for _, off in ipairs(offsets) do
-                    if not killRunning or seated then break end
-                    plrHRP.CFrame = CFrame.new(base + off, base)
+                for _,off in ipairs(offsets) do
+                    if not running or stopFlag then break end
+                    hrp.CFrame = CFrame.new(base + off, base)
                     task.wait(0.035)
                 end
 
                 tickSide = -tickSide
             end
-            killThread = nil
-        end)
-    end
-end
+        end
 
--- Criando o dropdown para selecionar o método
-local methodDropdown = TrollTab:AddDropdown({
-    Name = "Método de Kill",
-    Options = { "Sofá", "Ônibus", "Barco" },
-    Default = "Sofá"
+        --==============================
+        -- SOFA
+        --==============================
+
+        if selectedMethod == "Sofa" then
+
+            for i = 1,12 do
+                ReplicatedStorage.Remotes.IncrementBodySize:FireServer(false)
+            end
+
+            local hasCouch = false
+
+            if character:FindFirstChild("Couch") then
+                hasCouch = true
+            end
+
+            for _,tool in ipairs(plr.Backpack:GetChildren()) do
+                if tool.Name == "Couch" then
+                    hasCouch = true
+                end
+            end
+
+            if not hasCouch then
+                ReplicatedStorage.RE["1Too1l"]:InvokeServer("PickingTools","Couch")
+                task.wait(0.3)
+            end
+
+            local couch = plr.Backpack:FindFirstChild("Couch")
+            if couch then
+                humanoid:EquipTool(couch)
+            end
+
+            task.wait(0.2)
+
+            hrp.CFrame = targetHRP.CFrame * CFrame.new(0,0,-2)
+
+            targetHumanoid.Seated:Connect(function(active)
+                if active then
+                    running = false
+                    hrp.CFrame = CFrame.new(-54,-298,-184)
+                    task.wait(0.3)
+                    humanoid:UnequipTools()
+                    task.wait(0.7)
+                    hrp.CFrame = CFrame.new(-27,4,-16)
+                end
+            end)
+
+            task.spawn(followTarget)
+
+        --==============================
+        -- BUS
+        --==============================
+
+        elseif selectedMethod == "Bus" then
+
+            hrp.CFrame = CFrame.new(1181,76,-1158)
+            task.wait(0.3)
+
+            pcall(function()
+                ReplicatedStorage.RE["1Ca1r"]:FireServer("DeleteAllVehicles")
+                ReplicatedStorage.RE["1Ca1r"]:FireServer("PickingCar","SchoolBus")
+            end)
+
+            local bus
+            repeat
+                task.wait()
+                bus = Workspace.Vehicles:FindFirstChild(plr.Name.."Car")
+            until bus or stopFlag
+
+            if stopFlag then return end
+
+            local seat = bus:FindFirstChildWhichIsA("VehicleSeat")
+
+            if seat then
+                seat:Sit(humanoid)
+            end
+
+            repeat task.wait() until humanoid.Sit or stopFlag
+
+            hrp.CFrame = targetHRP.CFrame
+
+            targetHumanoid.Seated:Connect(function(active)
+                if active then
+                    running = false
+                    hrp.CFrame = CFrame.new(hrp.Position.X,-400,hrp.Position.Z)
+                end
+            end)
+
+            task.spawn(followTarget)
+
+        --==============================
+        -- BOAT
+        --==============================
+
+        elseif selectedMethod == "Boat" then
+
+            hrp.CFrame = CFrame.new(1761,-4,69)
+            task.wait(0.4)
+
+            ReplicatedStorage.RE["1Ca1r"]:FireServer("PickingBoat","FishingBoat","Boat")
+
+            task.wait(0.7)
+
+            repeat task.wait() until humanoid.Sit or stopFlag
+
+            hrp.CFrame = targetHRP.CFrame
+
+            targetHumanoid.Seated:Connect(function(active)
+                if active then
+                    running = false
+                    hrp.CFrame = CFrame.new(hrp.Position.X,-400,hrp.Position.Z)
+                end
+            end)
+
+            task.spawn(followTarget)
+        end
+
+    end
 })
 
--- Botão de Kill
+--==============================
+-- BOTÃO PARAR
+--==============================
+
 TrollTab:AddButton({
-    Name = "Matar",
+    Name = "PARAR",
     Callback = function()
-        local selectedMethod = methodDropdown:GetValue() -- ajuste conforme a API do TrollTab
-        local methodMap = {
-            Sofá = "couch",
-            Ônibus = "bus",
-            Barco = "boat"
-        }
-        executeKill(methodMap[selectedMethod])
+        running = false
+        stopFlag = true
     end
 })
-
--- Botão de Parar
-TrollTab:AddButton({
-    Name = "Parar",
-    Callback = function()
-        stopKill()
-    end
-})
-
 
 
 
