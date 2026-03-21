@@ -988,415 +988,256 @@ TrollTab:AddButton({
 })
 
 
-TrollTab:AddSection({"killS"})
 
 
-local running = false
-local seated = false
-local sitConn
+-- Variáveis globais de controle
+local killRunning = false
+local killSitConn = nil
+local killThread = nil
 
--- RESET QUANDO MORRER
-plr.CharacterAdded:Connect(function()
-    running = false
-    seated = false
-
-    if sitConn then
-        sitConn:Disconnect()
-        sitConn = nil
+-- Função para parar qualquer kill em andamento
+local function stopKill()
+    if killRunning then
+        killRunning = false
+        if killSitConn then
+            killSitConn:Disconnect()
+            killSitConn = nil
+        end
+        if killThread then
+            -- A thread vai perceber que killRunning é false e sair
+            killThread = nil
+        end
+        -- Opcional: desequipar ferramentas se necessário
+        local char = plr.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum:UnequipTools()
+            end
+        end
     end
-end)
+end
 
-TrollTab:AddButton({
-    Name = "KILL",
-    Callback = function()
+-- Função principal que executa o kill conforme o método escolhido
+local function executeKill(method)
+    if killRunning then
+        stopKill()
+        task.wait(0.2) -- Pequeno delay para garantir que parou
+    end
 
-        if running or not selectedPlayer then return end
+    if not selectedPlayer then
+        print("Nenhum jogador selecionado")
+        return
+    end
 
-        local character = plr.Character
-        if not character then return end
+    local target = Players:FindFirstChild(selectedPlayer)
+    if not target or not target.Character then
+        print("Alvo inválido")
+        return
+    end
 
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        local hrp = character:FindFirstChild("HumanoidRootPart")
-        if not humanoid or not hrp then return end
+    local plrChar = plr.Character
+    if not plrChar then return end
 
-        local target = Players:FindFirstChild(selectedPlayer)
-        if not target or not target.Character then return end
+    local plrHumanoid = plrChar:FindFirstChildOfClass("Humanoid")
+    local plrHRP = plrChar:FindFirstChild("HumanoidRootPart")
+    if not plrHumanoid or not plrHRP then return end
 
-        local targetHumanoid = target.Character:FindFirstChild("Humanoid")
-        local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
-        if not targetHumanoid or not targetHRP then return end
+    local targetHumanoid = target.Character:FindFirstChild("Humanoid")
+    local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHumanoid or not targetHRP then return end
 
-        running = true
-        seated = false
+    -- Configura variáveis de controle
+    killRunning = true
+    local seated = false
 
-        -- BODY SIZE
-        for i = 1,12 do
+    -- Função que será chamada quando o alvo sentar
+    local function onTargetSeated(active)
+        if active and killRunning then
+            seated = true
+            killRunning = false -- Para o loop de movimento
+
+            if killSitConn then
+                killSitConn:Disconnect()
+                killSitConn = nil
+            end
+
+            -- Executa a ação específica de cada método após o alvo sentar
+            if method == "couch" then
+                -- Sofá: teleporta para posição específica, desequipa ferramentas e teleporta de volta
+                plrHRP.CFrame = CFrame.new(-54.24, -298.21, -184.12)
+                task.wait(0.3)
+                plrHumanoid:UnequipTools()
+                task.wait(0.7)
+                plrHRP.CFrame = CFrame.new(-27.59, 4.27, -16.84)
+
+            elseif method == "bus" or method == "boat" then
+                -- Ônibus e Barco: teleporta para Y = -400, pula e espera cair até -450, depois volta ao spawn de veículos
+                plrHRP.CFrame = CFrame.new(plrHRP.Position.X, -400, plrHRP.Position.Z)
+                plrHumanoid.Jump = true
+
+                task.spawn(function()
+                    while killRunning and plrHRP.Position.Y > -450 do
+                        task.wait()
+                    end
+                    -- Volta ao spawn de veículos (pode ajustar conforme necessário)
+                    plrHRP.CFrame = CFrame.new(1181.83, 76.08, -1158.83)
+                end)
+            end
+        end
+    end
+
+    -- Configura o evento Seated do alvo
+    killSitConn = targetHumanoid.Seated:Connect(onTargetSeated)
+
+    -- Agora executa o setup específico de cada método
+    if method == "couch" then
+        -- Aumenta tamanho do corpo
+        for i = 1, 12 do
             ReplicatedStorage.Remotes.IncrementBodySize:FireServer(false)
         end
 
-        -- PEGAR COUCH
+        -- Pega o sofá
         local hasCouch = false
-
-        if character:FindFirstChild("Couch") then
+        if plrChar:FindFirstChild("Couch") then
             hasCouch = true
         end
-
-        for _,tool in ipairs(plr.Backpack:GetChildren()) do
+        for _, tool in ipairs(plr.Backpack:GetChildren()) do
             if tool.Name == "Couch" then
                 hasCouch = true
             end
         end
 
         if not hasCouch then
-            ReplicatedStorage.RE["1Too1l"]:InvokeServer("PickingTools","Couch")
+            ReplicatedStorage.RE["1Too1l"]:InvokeServer("PickingTools", "Couch")
             task.wait(0.3)
         end
 
         local couch = plr.Backpack:FindFirstChild("Couch")
         if couch then
-            humanoid:EquipTool(couch)
+            plrHumanoid:EquipTool(couch)
         end
 
         task.wait(0.2)
+        plrHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, -2)
 
-        hrp.CFrame = targetHRP.CFrame * CFrame.new(0,0,-2)
-
-        if sitConn then
-            sitConn:Disconnect()
-        end
-
-        sitConn = targetHumanoid.Seated:Connect(function(active)
-
-            if active then
-                seated = true
-                running = false
-
-                sitConn:Disconnect()
-
-                hrp.CFrame = CFrame.new(-54.24,-298.21,-184.12)
-
-                task.wait(0.3)
-
-                humanoid:UnequipTools()
-
-                task.wait(0.7)
-
-                hrp.CFrame = CFrame.new(-27.59,4.27,-16.84)
-            end
-
-        end)
-
-        task.spawn(function()
-
-            local tickSide = 1
-
-            while running and not seated do
-
-                local base = targetHRP.Position
-
-                local offsets = {
-
-                    Vector3.new(3 * tickSide,0,0),
-                    Vector3.new(-3 * tickSide,0,0),
-                    Vector3.new(0,0,3 * tickSide),
-                    Vector3.new(0,0,-3 * tickSide),
-                    Vector3.new(0,3,0),
-                    Vector3.new(0,-3,0),
-                    Vector3.new(1.5,-3.2,1.5),
-                    Vector3.new(-1.5,-3.2,-1.5)
-
-                }
-
-                for _,off in ipairs(offsets) do
-
-                    if not running or seated then break end
-
-                    hrp.CFrame = CFrame.new(base + off, base)
-
-                    task.wait(0.035)
-
-                end
-
-                tickSide = -tickSide
-
-            end
-
-        end)
-
-    end
-})
-
-
-
-TrollTab:AddButton({
-    Name = "Kill Ônibus",
-    Callback = function()
-
-        if not selectedPlayer then return end
-
-        local target = Players:FindFirstChild(selectedPlayer)
-        if not target or not target.Character then return end
-
-        local character = plr.Character
-        if not character then return end
-
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        local hrp = character:FindFirstChild("HumanoidRootPart")
-
-        if not humanoid or not hrp then return end
-
-        local targetHumanoid = target.Character:FindFirstChild("Humanoid")
-        local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
-
-        if not targetHumanoid or not targetHRP then return end
-
-        -- IR SPAWN VEICULOS
-        hrp.CFrame = CFrame.new(1181.83,76.08,-1158.83)
-
+    elseif method == "bus" then
+        -- Teleporta para spawn de veículos
+        plrHRP.CFrame = CFrame.new(1181.83, 76.08, -1158.83)
         task.wait(0.3)
 
-        -- LIMPAR VEICULOS
+        -- Limpa veículos e spawna ônibus
         pcall(function()
             ReplicatedStorage.RE["1Ca1r"]:FireServer("DeleteAllVehicles")
         end)
-
-        -- SPAWN BUS
         pcall(function()
-            ReplicatedStorage.RE["1Ca1r"]:FireServer("PickingCar","SchoolBus")
+            ReplicatedStorage.RE["1Ca1r"]:FireServer("PickingCar", "SchoolBus")
         end)
 
-        -- ESPERAR BUS
+        -- Aguarda o ônibus aparecer
         local bus
         repeat
             task.wait()
-            bus = Workspace.Vehicles:FindFirstChild(plr.Name.."Car")
+            bus = Workspace.Vehicles:FindFirstChild(plr.Name .. "Car")
         until bus
 
-        -- POSIÇÃO DO SEAT
-        hrp.CFrame = CFrame.new(1171.46,84.27,-1166.66)
-
+        -- Posiciona para sentar
+        plrHRP.CFrame = CFrame.new(1171.46, 84.27, -1166.66)
         task.wait(0.5)
 
         local seat = bus:FindFirstChildWhichIsA("VehicleSeat") or bus:FindFirstChildWhichIsA("Seat")
-
         if seat then
-            seat:Sit(humanoid)
+            seat:Sit(plrHumanoid)
         end
 
-        -- ESPERAR VOCÊ SENTAR
-        repeat task.wait() until humanoid.Sit
+        -- Aguarda sentar
+        repeat task.wait() until plrHumanoid.Sit
 
-        local running = true
-        local seated = false
+        -- Teleporta para perto do alvo
+        plrHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, -3)
 
-        local sitConn
-        sitConn = targetHumanoid.Seated:Connect(function(active)
-
-            if active then
-
-                seated = true
-                running = false
-
-                sitConn:Disconnect()
-
-                -- TELEPORTAR PARA -400
-                hrp.CFrame = CFrame.new(hrp.Position.X,-400,hrp.Position.Z)
-
-                -- FAZER PULAR
-                humanoid.Jump = true
-
-                -- ESPERAR CAIR ATÉ -450
-                task.spawn(function()
-
-                    while hrp.Position.Y > -450 do
-                        task.wait()
-                    end
-
-                    -- TELEPORTAR PARA SPAWN VEICULOS
-                    hrp.CFrame = CFrame.new(1181.83,76.08,-1158.83)
-
-                end)
-
-            end
-
-        end)
-
-        task.spawn(function()
-
-            local tickSide = 1
-
-            while running and not seated do
-
-                if not target.Character then break end
-
-                local base = targetHRP.Position
-
-                local offsets = {
-
-                    Vector3.new(3 * tickSide,0,0),
-                    Vector3.new(-3 * tickSide,0,0),
-                    Vector3.new(0,0,3 * tickSide),
-                    Vector3.new(0,0,-3 * tickSide),
-
-                    Vector3.new(0,3,0),
-                    Vector3.new(0,-3,0),
-
-                    Vector3.new(1.5,-3.2,1.5),
-                    Vector3.new(-1.5,-3.2,-1.5)
-
-                }
-
-                for _,off in ipairs(offsets) do
-
-                    if not running or seated then break end
-
-                    hrp.CFrame = CFrame.new(base + off, base)
-
-                    task.wait(0.035)
-
-                end
-
-                tickSide = -tickSide
-
-            end
-
-        end)
-
-    end
-})
-
-
-
-TrollTab:AddButton({
-    Name = "Kill Boat",
-    Callback = function()
-
-        if not selectedPlayer then return end
-
-        local Players = game:GetService("Players")
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-        local plr = Players.LocalPlayer
-        local character = plr.Character
-        if not character then return end
-
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        local hrp = character:FindFirstChild("HumanoidRootPart")
-
-        if not humanoid or not hrp then return end
-
-        local target = Players:FindFirstChild(selectedPlayer)
-        if not target or not target.Character then return end
-
-        local targetHumanoid = target.Character:FindFirstChild("Humanoid")
-        local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
-
-        if not targetHumanoid or not targetHRP then return end
-
-        -- TELEPORTAR PARA SPAWN DO BARCO
-        hrp.CFrame = CFrame.new(1761.91,-4.00,69.07) * CFrame.Angles(0,math.rad(-6.93),0)
-
+    elseif method == "boat" then
+        -- Teleporta para spawn do barco
+        plrHRP.CFrame = CFrame.new(1761.91, -4.00, 69.07) * CFrame.Angles(0, math.rad(-6.93), 0)
         task.wait(0.4)
 
-        -- SPAWN BOAT
-        local args = {
-            [1] = "PickingBoat",
-            [2] = "FishingBoat",
-            [3] = "Boat"
-        }
-
+        -- Spawna barco
+        local args = { "PickingBoat", "FishingBoat", "Boat" }
         ReplicatedStorage.RE["1Ca1r"]:FireServer(unpack(args))
 
         task.wait(0.7)
 
-        -- TELEPORTAR PARA POSIÇÃO DE SENTAR
-        hrp.CFrame = CFrame.new(1767.14,0.70,54.58) * CFrame.Angles(math.rad(0.25),math.rad(83.03),0)
+        -- Posiciona para sentar
+        plrHRP.CFrame = CFrame.new(1767.14, 0.70, 54.58) * CFrame.Angles(math.rad(0.25), math.rad(83.03), 0)
 
-        -- ESPERAR SENTAR
-        repeat task.wait() until humanoid.Sit
+        -- Aguarda sentar
+        repeat task.wait() until plrHumanoid.Sit
 
-        -- TELEPORTAR PARA PLAYER
-        hrp.CFrame = targetHRP.CFrame * CFrame.new(0,0,-3)
+        -- Teleporta para perto do alvo
+        plrHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, -3)
+    end
 
-        local running = true
-        local seated = false
-
-        local sitConn
-
-        sitConn = targetHumanoid.Seated:Connect(function(active)
-
-            if active then
-
-                running = false
-                seated = true
-
-                sitConn:Disconnect()
-
-                -- TELEPORTAR PARA -400
-                hrp.CFrame = CFrame.new(hrp.Position.X,-400,hrp.Position.Z)
-
-                humanoid.Jump = true
-
-                task.spawn(function()
-
-                    while hrp.Position.Y > -450 do
-                        task.wait()
-                    end
-
-                    -- VOLTAR SPAWN VEICULOS
-                    hrp.CFrame = CFrame.new(1181.83,76.08,-1158.83)
-
-                end)
-
-            end
-
-        end)
-
-        task.spawn(function()
-
+    -- Se o método não for couch (bus ou boat), ou mesmo couch, iniciamos o loop de movimento
+    -- O loop só é necessário se ainda não estiver sentado (no caso do couch, o loop é executado)
+    if killRunning then
+        killThread = task.spawn(function()
             local tickSide = 1
-
-            while running and not seated do
-
+            while killRunning and not seated do
                 if not target.Character then break end
 
                 local base = targetHRP.Position
-
                 local offsets = {
-
-                    Vector3.new(3 * tickSide,0,0),
-                    Vector3.new(-3 * tickSide,0,0),
-
-                    Vector3.new(0,0,3 * tickSide),
-                    Vector3.new(0,0,-3 * tickSide),
-
-                    Vector3.new(0,3,0),
-                    Vector3.new(0,-3,0),
-
-                    Vector3.new(1.5,-3.2,1.5),
-                    Vector3.new(-1.5,-3.2,-1.5)
-
+                    Vector3.new(3 * tickSide, 0, 0),
+                    Vector3.new(-3 * tickSide, 0, 0),
+                    Vector3.new(0, 0, 3 * tickSide),
+                    Vector3.new(0, 0, -3 * tickSide),
+                    Vector3.new(0, 3, 0),
+                    Vector3.new(0, -3, 0),
+                    Vector3.new(1.5, -3.2, 1.5),
+                    Vector3.new(-1.5, -3.2, -1.5)
                 }
 
-                for _,off in ipairs(offsets) do
-
-                    if not running or seated then break end
-
-                    hrp.CFrame = CFrame.new(base + off, base)
-
+                for _, off in ipairs(offsets) do
+                    if not killRunning or seated then break end
+                    plrHRP.CFrame = CFrame.new(base + off, base)
                     task.wait(0.035)
-
                 end
 
                 tickSide = -tickSide
-
             end
-
+            killThread = nil
         end)
+    end
+end
 
+-- Criando o dropdown para selecionar o método
+local methodDropdown = TrollTab:AddDropdown({
+    Name = "Método de Kill",
+    Options = { "Sofá", "Ônibus", "Barco" },
+    Default = "Sofá"
+})
+
+-- Botão de Kill
+TrollTab:AddButton({
+    Name = "Matar",
+    Callback = function()
+        local selectedMethod = methodDropdown:GetValue() -- ajuste conforme a API do TrollTab
+        local methodMap = {
+            Sofá = "couch",
+            Ônibus = "bus",
+            Barco = "boat"
+        }
+        executeKill(methodMap[selectedMethod])
     end
 })
 
+-- Botão de Parar
+TrollTab:AddButton({
+    Name = "Parar",
+    Callback = function()
+        stopKill()
+    end
+})
 
 
 
@@ -1751,255 +1592,6 @@ end
 end
 
 end)
-
-end
-})
-
-
-
-
-TrollTab:AddSection({"Orbit TROLL"})
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-OrbitSettings = {
-Speed = 5,
-Distance = 6,
-Height = 0,
-Fling = false,
-Stick = false,
-Crazy = false
-}
-
---------------------------------------------------
--- SLIDERS
---------------------------------------------------
-
-TrollTab:AddSlider({
-Name = "Orbit Speed",
-Min = 1,
-Max = 100,
-Default = 5,
-Callback = function(v)
-OrbitSettings.Speed = v
-end
-})
-
-TrollTab:AddSlider({
-Name = "Distance",
-Min = 0,
-Max = 20,
-Default = 6,
-Callback = function(v)
-OrbitSettings.Distance = v
-end
-})
-
-TrollTab:AddSlider({
-Name = "Height",
-Min = -10,
-Max = 10,
-Default = 0,
-Callback = function(v)
-OrbitSettings.Height = v
-end
-})
-
---------------------------------------------------
--- MODES
---------------------------------------------------
-
-TrollTab:AddToggle({
-Name = "Fling Ball",
-Default = false,
-Callback = function(v)
-OrbitSettings.Fling = v
-end
-})
-
-TrollTab:AddToggle({
-Name = "Stick Ball",
-Default = false,
-Callback = function(v)
-OrbitSettings.Stick = v
-end
-})
-
-TrollTab:AddToggle({
-Name = "Crazy Ball",
-Default = false,
-Callback = function(v)
-OrbitSettings.Crazy = v
-end
-})
-
---------------------------------------------------
--- ORBIT FUNCTION
---------------------------------------------------
-
-function orbitBall(targetChar,modeName)
-
-if not targetChar or not targetChar:FindFirstChild("HumanoidRootPart") then return end
-
-local player = Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local backpack = player:WaitForChild("Backpack")
-
-local ballsFolder = workspace:WaitForChild("WorkspaceCom"):WaitForChild("001_SoccerBalls")
-
---------------------------------------------------
--- PEGAR BOLA
---------------------------------------------------
-
-if not backpack:FindFirstChild("SoccerBall") and not char:FindFirstChild("SoccerBall") then
-
-ReplicatedStorage.RE["1Too1l"]:InvokeServer("PickingTools","SoccerBall")
-
-end
-
-repeat task.wait()
-until backpack:FindFirstChild("SoccerBall") or char:FindFirstChild("SoccerBall")
-
-local tool = backpack:FindFirstChild("SoccerBall")
-
-if tool then
-tool.Parent = char
-end
-
-repeat task.wait()
-until ballsFolder:FindFirstChild("Soccer"..player.Name)
-
-local orb = ballsFolder:FindFirstChild("Soccer"..player.Name)
-
-if not orb then return end
-
-orb.Name = modeName
-orb.CanCollide = false
-orb.Massless = true
-orb.CustomPhysicalProperties = PhysicalProperties.new(0.0001,0,0)
-
---------------------------------------------------
--- FLING POWER
---------------------------------------------------
-
-if orb:FindFirstChild("FlingPower") then
-orb.FlingPower:Destroy()
-end
-
-if OrbitSettings.Fling then
-
-local bv = Instance.new("BodyVelocity")
-bv.Name = "FlingPower"
-bv.Velocity = Vector3.new(9e8,9e8,9e8)
-bv.MaxForce = Vector3.new(math.huge,math.huge,math.huge)
-bv.P = 9e9
-bv.Parent = orb
-
-end
-
---------------------------------------------------
--- LOOP
---------------------------------------------------
-
-local loop = Instance.new("BoolValue")
-loop.Name = modeName.."Loop"
-loop.Parent = char
-
-task.spawn(function()
-
-while loop.Parent and orb and orb.Parent and targetChar and targetChar.Parent do
-
-local hrp = targetChar:FindFirstChild("HumanoidRootPart")
-
-if not hrp then break end
-
-local angle = tick() * OrbitSettings.Speed
-
---------------------------------------------------
--- STICK MODE
---------------------------------------------------
-
-if OrbitSettings.Stick then
-
-orb.CFrame = hrp.CFrame * CFrame.new(0,0,-2)
-
---------------------------------------------------
--- CRAZY MODE
---------------------------------------------------
-
-elseif OrbitSettings.Crazy then
-
-local randomOffset = Vector3.new(
-math.random(-6,6),
-math.random(-4,4),
-math.random(-6,6)
-)
-
-orb.CFrame = hrp.CFrame + randomOffset
-
---------------------------------------------------
--- ORBIT NORMAL
---------------------------------------------------
-
-else
-
-local offset = CFrame.new(
-math.cos(angle)*OrbitSettings.Distance,
-OrbitSettings.Height,
-math.sin(angle)*OrbitSettings.Distance
-)
-
-orb.CFrame = hrp.CFrame * offset
-
-end
-
-task.wait(1/120)
-
-end
-
-end)
-
-end
-
---------------------------------------------------
--- TOGGLES
---------------------------------------------------
-
-TrollTab:AddToggle({
-Name = "Orbit Ball (Self)",
-Default = false,
-Callback = function(state)
-
-local char = Players.LocalPlayer.Character
-local loop = char and char:FindFirstChild("OrbitSelfLoop")
-
-if state then
-orbitBall(char,"OrbitSelf")
-elseif loop then
-loop:Destroy()
-end
-
-end
-})
-
-TrollTab:AddToggle({
-Name = "Orbit Ball",
-Default = false,
-Callback = function(state)
-
-local target = selectedPlayer and Players:FindFirstChild(selectedPlayer)
-
-if not target then return end
-
-local char = Players.LocalPlayer.Character
-local loop = char and char:FindFirstChild("OrbitTargetLoop")
-
-if state then
-orbitBall(target.Character,"OrbitTarget")
-elseif loop then
-loop:Destroy()
-end
 
 end
 })
