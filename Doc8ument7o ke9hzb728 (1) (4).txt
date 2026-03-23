@@ -1400,6 +1400,160 @@ TrollTab:AddButton({
 
 
 
+TrollTab:AddButton({
+    Name = "bring boat pirate",
+    Callback = function()
+
+        if not selectedPlayer then return end
+
+        local Players = game:GetService("Players")
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local RunService = game:GetService("RunService")
+        local Workspace = game:GetService("Workspace")
+
+        local plr = Players.LocalPlayer
+        local character = plr.Character
+        if not character then return end
+
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        local hrp = character:FindFirstChild("HumanoidRootPart")
+
+        if not humanoid or not hrp then return end
+
+        local target = Players:FindFirstChild(selectedPlayer)
+        if not target or not target.Character then return end
+
+        local targetHumanoid = target.Character:FindFirstChild("Humanoid")
+        local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+
+        if not targetHumanoid or not targetHRP then return end
+
+        local Vehicles = workspace:WaitForChild("Vehicles")
+
+        --==============================
+        -- SPAWN BARCO (DO TORNADO)
+        --==============================
+        hrp.CFrame = CFrame.new(1754, -2, 58)
+        task.wait(0.5)
+
+        ReplicatedStorage:WaitForChild("RE"):WaitForChild("1Ca1r"):FireServer("PickingBoat","PirateFree")
+        task.wait(1)
+
+        local PCar = Vehicles:FindFirstChild(plr.Name .. "Car")
+        if not PCar then return end
+
+        local Seat = PCar:FindFirstChild("Body") and PCar.Body:FindFirstChild("VehicleSeat")
+        if not Seat then return end
+
+        --==============================
+        -- SENTAR (DO TORNADO)
+        --==============================
+        repeat
+            hrp.CFrame = Seat.CFrame * CFrame.new(0,1,0)
+            task.wait()
+        until humanoid.SeatPart == Seat
+
+        humanoid.Sit = true
+
+        task.wait(0.2)
+
+        -- TELEPORTAR PRO PLAYER
+        hrp.CFrame = targetHRP.CFrame * CFrame.new(0,0,-2)
+
+        local running = true
+        local seated = false
+
+        local sitConn
+        sitConn = targetHumanoid.Seated:Connect(function(active)
+
+            if active then
+
+                running = false
+                seated = true
+
+                sitConn:Disconnect()
+
+                hrp.CFrame = CFrame.new(hrp.Position.X,-400,hrp.Position.Z)
+                humanoid.Jump = true
+
+                task.spawn(function()
+                    while hrp.Position.Y > -450 do
+                        task.wait()
+                    end
+
+                    hrp.CFrame = CFrame.new(1181.83,76.08,-1158.83)
+                end)
+
+            end
+        end)
+
+        --==============================
+        -- FULL CAOS MOVEMENT
+        --==============================
+        task.spawn(function()
+
+            local tickSide = 1
+            local rot = 0
+
+            while running and not seated do
+
+                if not target.Character then break end
+                if not targetHRP then break end
+
+                local base = targetHRP.Position
+
+                rot += math.rad(45)
+
+                local offsets = {
+
+                    Vector3.new(1.5,0,0),
+                    Vector3.new(-1.5,0,0),
+
+                    Vector3.new(0,0,1.5),
+                    Vector3.new(0,0,-1.5),
+
+                    Vector3.new(0,2,0),
+                    Vector3.new(0,-2,0),
+
+                    Vector3.new(2,1,2),
+                    Vector3.new(-2,1,-2),
+
+                    Vector3.new(2,-2,2),
+                    Vector3.new(-2,-2,-2),
+
+                    Vector3.new(0,3,1),
+                    Vector3.new(0,-3,-1),
+
+                    Vector3.new(1,2,-2),
+                    Vector3.new(-1,-2,2),
+
+                    Vector3.new(3,0,1),
+                    Vector3.new(-3,0,-1),
+
+                    Vector3.new(1.2,-3.2,1.2),
+                    Vector3.new(-1.2,-3.2,-1.2)
+                }
+
+                for _,off in ipairs(offsets) do
+
+                    if not running or seated then break end
+
+                    hrp.CFrame =
+                        CFrame.new(base + off, base) *
+                        CFrame.Angles(rot, rot, rot)
+
+                    task.wait(0.01)
+                end
+
+                tickSide = -tickSide
+            end
+        end)
+
+    end
+})
+
+
+
 
 TrollTab:AddSection({"fling sofa"})
 
@@ -1754,406 +1908,6 @@ end)
 
 end
 })
-
-
-
-
-TrollTab:AddSection({"Orbit TROLL"})
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-OrbitSettings = {
-Speed = 5,
-Distance = 6,
-Height = 0,
-Fling = false,
-Stick = false,
-Crazy = false
-}
-
---------------------------------------------------
--- SLIDERS
---------------------------------------------------
-
-TrollTab:AddSlider({
-Name = "Orbit Speed",
-Min = 1,
-Max = 100,
-Default = 5,
-Callback = function(v)
-OrbitSettings.Speed = v
-end
-})
-
-TrollTab:AddSlider({
-Name = "Distance",
-Min = 0,
-Max = 20,
-Default = 6,
-Callback = function(v)
-OrbitSettings.Distance = v
-end
-})
-
-TrollTab:AddSlider({
-Name = "Height",
-Min = -10,
-Max = 10,
-Default = 0,
-Callback = function(v)
-OrbitSettings.Height = v
-end
-})
-
---------------------------------------------------
--- MODES
---------------------------------------------------
-
-TrollTab:AddToggle({
-Name = "Fling Ball",
-Default = false,
-Callback = function(v)
-OrbitSettings.Fling = v
-end
-})
-
-TrollTab:AddToggle({
-Name = "Stick Ball",
-Default = false,
-Callback = function(v)
-OrbitSettings.Stick = v
-end
-})
-
-TrollTab:AddToggle({
-Name = "Crazy Ball",
-Default = false,
-Callback = function(v)
-OrbitSettings.Crazy = v
-end
-})
-
---------------------------------------------------
--- ORBIT FUNCTION
---------------------------------------------------
-
-function orbitBall(targetChar,modeName)
-
-if not targetChar or not targetChar:FindFirstChild("HumanoidRootPart") then return end
-
-local player = Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local backpack = player:WaitForChild("Backpack")
-
-local ballsFolder = workspace:WaitForChild("WorkspaceCom"):WaitForChild("001_SoccerBalls")
-
---------------------------------------------------
--- PEGAR BOLA
---------------------------------------------------
-
-if not backpack:FindFirstChild("SoccerBall") and not char:FindFirstChild("SoccerBall") then
-
-ReplicatedStorage.RE["1Too1l"]:InvokeServer("PickingTools","SoccerBall")
-
-end
-
-repeat task.wait()
-until backpack:FindFirstChild("SoccerBall") or char:FindFirstChild("SoccerBall")
-
-local tool = backpack:FindFirstChild("SoccerBall")
-
-if tool then
-tool.Parent = char
-end
-
-repeat task.wait()
-until ballsFolder:FindFirstChild("Soccer"..player.Name)
-
-local orb = ballsFolder:FindFirstChild("Soccer"..player.Name)
-
-if not orb then return end
-
-orb.Name = modeName
-orb.CanCollide = false
-orb.Massless = true
-orb.CustomPhysicalProperties = PhysicalProperties.new(0.0001,0,0)
-
---------------------------------------------------
--- FLING POWER
---------------------------------------------------
-
-if orb:FindFirstChild("FlingPower") then
-orb.FlingPower:Destroy()
-end
-
-if OrbitSettings.Fling then
-
-local bv = Instance.new("BodyVelocity")
-bv.Name = "FlingPower"
-bv.Velocity = Vector3.new(9e8,9e8,9e8)
-bv.MaxForce = Vector3.new(math.huge,math.huge,math.huge)
-bv.P = 9e9
-bv.Parent = orb
-
-end
-
---------------------------------------------------
--- LOOP
---------------------------------------------------
-
-local loop = Instance.new("BoolValue")
-loop.Name = modeName.."Loop"
-loop.Parent = char
-
-task.spawn(function()
-
-while loop.Parent and orb and orb.Parent and targetChar and targetChar.Parent do
-
-local hrp = targetChar:FindFirstChild("HumanoidRootPart")
-
-if not hrp then break end
-
-local angle = tick() * OrbitSettings.Speed
-
---------------------------------------------------
--- STICK MODE
---------------------------------------------------
-
-if OrbitSettings.Stick then
-
-orb.CFrame = hrp.CFrame * CFrame.new(0,0,-2)
-
---------------------------------------------------
--- CRAZY MODE
---------------------------------------------------
-
-elseif OrbitSettings.Crazy then
-
-local randomOffset = Vector3.new(
-math.random(-6,6),
-math.random(-4,4),
-math.random(-6,6)
-)
-
-orb.CFrame = hrp.CFrame + randomOffset
-
---------------------------------------------------
--- ORBIT NORMAL
---------------------------------------------------
-
-else
-
-local offset = CFrame.new(
-math.cos(angle)*OrbitSettings.Distance,
-OrbitSettings.Height,
-math.sin(angle)*OrbitSettings.Distance
-)
-
-orb.CFrame = hrp.CFrame * offset
-
-end
-
-task.wait(1/120)
-
-end
-
-end)
-
-end
-
---------------------------------------------------
--- TOGGLES
---------------------------------------------------
-
-TrollTab:AddToggle({
-Name = "Orbit Ball (Self)",
-Default = false,
-Callback = function(state)
-
-local char = Players.LocalPlayer.Character
-local loop = char and char:FindFirstChild("OrbitSelfLoop")
-
-if state then
-orbitBall(char,"OrbitSelf")
-elseif loop then
-loop:Destroy()
-end
-
-end
-})
-
-TrollTab:AddToggle({
-Name = "Orbit Ball",
-Default = false,
-Callback = function(state)
-
-local target = selectedPlayer and Players:FindFirstChild(selectedPlayer)
-
-if not target then return end
-
-local char = Players.LocalPlayer.Character
-local loop = char and char:FindFirstChild("OrbitTargetLoop")
-
-if state then
-orbitBall(target.Character,"OrbitTarget")
-elseif loop then
-loop:Destroy()
-end
-
-end
-})
-
-
-
-
-TrollTab:AddSection({"Placas"})
-
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-local textoPlaca = ""
-local loopAll = false
-local loopTarget = false
-
---------------------------------------------------
--- TEXTBOX
---------------------------------------------------
-
-TrollTab:AddTextBox({
-    Name = "Texto da Placa",
-    PlaceholderText = "Digite o texto",
-    Callback = function(v)
-        textoPlaca = v
-    end
-})
-
---------------------------------------------------
--- FUNÇÃO TROCAR PLACA
---------------------------------------------------
-
-local function trocarPlacaPlayer(player, txt)
-
-    if player
-    and player.Character
-    and player.Character:FindFirstChild("Sign") then
-
-        player.Character.Sign.ToolSound:FireServer(
-            "Sign",
-            "SignWords",
-            txt
-        )
-
-    end
-
-end
-
---------------------------------------------------
--- BOTÃO ALL
---------------------------------------------------
-
-TrollTab:AddButton({
-    Name = "Trocar Placa ALL",
-    Callback = function()
-
-        for _,plr in pairs(Players:GetPlayers()) do
-            trocarPlacaPlayer(plr,textoPlaca)
-        end
-
-    end
-})
-
---------------------------------------------------
--- BOTÃO PLAYER
---------------------------------------------------
-
-TrollTab:AddButton({
-    Name = "Trocar Placa Player",
-    Callback = function()
-
-        if selectedPlayer then
-
-            local target = Players:FindFirstChild(selectedPlayer)
-
-            if target then
-                trocarPlacaPlayer(target,textoPlaca)
-            end
-
-        end
-
-    end
-})
-
---------------------------------------------------
--- LOOP ALL
---------------------------------------------------
-
-TrollTab:AddToggle({
-    Name = "Loop Placa ALL",
-    Default = false,
-    Callback = function(state)
-
-        loopAll = state
-
-        if state then
-
-            task.spawn(function()
-
-                while loopAll do
-
-                    for _,plr in pairs(Players:GetPlayers()) do
-                        trocarPlacaPlayer(plr,textoPlaca)
-                    end
-
-                    task.wait(0.5)
-
-                end
-
-            end)
-
-        end
-
-    end
-})
-
---------------------------------------------------
--- LOOP PLAYER
---------------------------------------------------
-
-TrollTab:AddToggle({
-    Name = "Loop Placa Player",
-    Default = false,
-    Callback = function(state)
-
-        loopTarget = state
-
-        if state then
-
-            task.spawn(function()
-
-                while loopTarget do
-
-                    if selectedPlayer then
-
-                        local target = Players:FindFirstChild(selectedPlayer)
-
-                        if target then
-                            trocarPlacaPlayer(target,textoPlaca)
-                        end
-
-                    end
-
-                    task.wait(0.5)
-
-                end
-
-            end)
-
-        end
-
-    end
-})
-
 
 
 
