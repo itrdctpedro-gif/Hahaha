@@ -3451,6 +3451,63 @@ local ItemTab = Window:MakeTab({
     Icon = "rbxassetid://11860859170"
 })
 
+
+
+
+ItemTab:AddSection({"Equipar todos os itens juntos na mão "})
+
+local multiEquip = false
+
+ItemTab:AddToggle({
+    Name = "Equipar vários itens ao mesmo tempo",
+    Default = false,
+    Callback = function(state)
+
+        multiEquip = state
+
+        if state then
+
+            task.spawn(function()
+
+                while multiEquip do
+
+                    local player = game.Players.LocalPlayer
+                    local char = player.Character
+
+                    if char then
+
+                        for _,tool in pairs(player.Backpack:GetChildren()) do
+
+                            if not multiEquip then break end
+
+                            if tool:IsA("Tool") then
+
+                                -- move direto pro character (igual FireHose faz)
+                                tool.Parent = char
+
+                                task.wait(0.05)
+
+                            end
+
+                        end
+
+                    end
+
+                    task.wait(0.1)
+
+                end
+
+            end)
+
+        end
+
+    end
+})
+
+
+
+
+
 ItemTab:AddSection({ "itens vip event etc" })
 
 --////////////////////////////////////////////////////
