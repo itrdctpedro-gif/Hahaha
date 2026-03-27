@@ -4517,6 +4517,11 @@ local Phonk = {
 
 local Funk = {
 ["Automotivo no bico da garrafa"] = "107047372509033",
+["Chuva De Arroz"] = "102120036739514",
+["Piui Tic Tac - MC RD"] = "128599225685461",
+["Pega sente o som do tapa"] = "97708834121472",
+["vem socando "] = "114436245577405",
+["o japonêsinha"] = "73508063540527",
 ["Senta tua GXSTXSX"] = "110176270788146",
 ["Famosinha { Estourado}"] = "112406825739796",
 ["OFF THE KING"] = "120324849313242",
@@ -4740,12 +4745,6 @@ MusicTab:AddButton({
         end
     end
 })
-
-
-
-
-
-
 
 
 
