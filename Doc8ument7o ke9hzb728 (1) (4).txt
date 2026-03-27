@@ -4740,3 +4740,421 @@ MusicTab:AddButton({
         end
     end
 })
+
+
+
+
+
+
+
+
+
+--////////////////////////////////////////////////////
+--// TAB SCRIPTS
+local Tab14 = Window:MakeTab({
+    Title = "SCRIPTS",
+    Icon = "rbxassetid://86591853167234"
+})
+
+Tab14:AddSection({ "Scripts" })
+
+Tab14:AddButton({
+    Name = "Spectra fly",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/djhehdhdjdjdjdbfb-sys/Meu-Script-hahahahah/refs/heads/main/fly.txt"))()
+    end
+})
+
+
+
+
+Tab14:AddSection({ "vai ter mais Scripts depois" })
+
+
+
+
+
+--================ TAB =================
+local Tab14 = Window:MakeTab({
+    Title = "Protection",
+    Icon = "rbxassetid://7734056608"
+})
+
+--================ SERVICES =================
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+
+--================ BACKUP =================
+local backupTables = {
+    Vehicles = {},
+    Canoes = {},
+    Jets = {},
+    Helis = {},
+    Balls = {}
+}
+
+--================ NOTIFY =================
+local function Notify(msg)
+    print("[PROTECTION] "..msg)
+end
+
+--================ ANTI FLING =================
+local function AntiFlingLoop(name, getFolderFunc)
+    local active = false
+
+    task.spawn(function()
+        while true do
+            if active and LocalPlayer.Character then
+                local folder = getFolderFunc()
+
+                if folder then
+                    for _, item in ipairs(folder:GetChildren()) do
+                        local isMine = false
+
+                        if name == "Vehicles" then
+                            for _, seat in ipairs(item:GetDescendants()) do
+                                if (seat:IsA("VehicleSeat") or seat:IsA("Seat")) and seat.Occupant and seat.Occupant.Parent == LocalPlayer.Character then
+                                    isMine = true
+                                    break
+                                end
+                            end
+
+                        elseif name == "Canoes" then
+                            local owner = item:FindFirstChild("Owner")
+                            isMine = owner and owner.Value == LocalPlayer
+
+                        elseif name == "Jets" or name == "Helis" then
+                            isMine = item.Name == LocalPlayer.Name
+                        end
+
+                        if not isMine then
+                            table.insert(backupTables[name], item:Clone())
+                            item:Destroy()
+                        end
+                    end
+                end
+            end
+
+            task.wait(0.03)
+        end
+    end)
+
+    return function(state)
+        active = state
+
+        Notify(name.." "..(state and "ativado" or "desativado"))
+
+        if not state then
+            local folder = getFolderFunc()
+            if folder then
+                for _, item in ipairs(backupTables[name]) do
+                    item.Parent = folder
+                end
+            end
+            backupTables[name] = {}
+        end
+    end
+end
+
+--================ ANTI BUG =================
+local AntiWeaponConn
+
+local AntiBugToggle = Tab14:AddToggle({
+    Name = "Anti Bug",
+    Default = false
+})
+
+AntiBugToggle:Callback(function(enabled)
+    if AntiWeaponConn then
+        AntiWeaponConn:Disconnect()
+        AntiWeaponConn = nil
+    end
+
+    if enabled then
+        AntiWeaponConn = RunService.Stepped:Connect(function()
+            local cam = Workspace.CurrentCamera
+            if not cam then return end
+
+            for _, obj in ipairs(cam:GetChildren()) do
+                if obj:IsA("BasePart") and obj.Name == "water" then
+                    pcall(function() obj:Destroy() end)
+                end
+            end
+        end)
+    end
+end)
+
+--================ ANTI FLING =================
+Tab14:AddToggle({
+    Name = "Anti fling Carros",
+    Default = false,
+    Callback = AntiFlingLoop("Vehicles", function()
+        return Workspace:FindFirstChild("Vehicles")
+    end)
+})
+
+Tab14:AddToggle({
+    Name = "Anti Canoe Fling",
+    Default = false,
+    Callback = AntiFlingLoop("Canoes", function()
+        local workspaceCom = Workspace:FindFirstChild("WorkspaceCom")
+        return workspaceCom and workspaceCom:FindFirstChild("001_CanoeStorage")
+    end)
+})
+
+Tab14:AddToggle({
+    Name = "Anti Fling Jets",
+    Default = false,
+    Callback = AntiFlingLoop("Jets", function()
+        local folder = Workspace:FindFirstChild("WorkspaceCom")
+        if folder and folder:FindFirstChild("001_Airport") then
+            local storage = folder["001_Airport"]:FindFirstChild("AirportHanger")
+            if storage then
+                local jetStorage = storage:FindFirstChild("001_JetStorage")
+                return jetStorage and jetStorage:FindFirstChild("JetAirport")
+            end
+        end
+    end)
+})
+
+Tab14:AddToggle({
+    Name = "Anti Fling Helicopteros",
+    Default = false,
+    Callback = AntiFlingLoop("Helis", function()
+        local folder = Workspace:FindFirstChild("WorkspaceCom")
+        return folder and folder:FindFirstChild("001_HeliStorage") and folder["001_HeliStorage"]:FindFirstChild("PoliceStationHeli")
+    end)
+})
+
+Tab14:AddToggle({
+    Name = "Anti Fling Ball",
+    Default = false,
+    Callback = AntiFlingLoop("Balls", function()
+        local folder = Workspace:FindFirstChild("WorkspaceCom")
+        return folder and folder:FindFirstChild("001_SoccerBalls")
+    end)
+})
+
+--================ ANTI SIT =================
+local antiSitActive = false
+
+Tab14:AddToggle({
+    Name = "Anti Sit",
+    Default = false,
+    Callback = function(state)
+        antiSitActive = state
+
+        Notify("Anti Sit "..(state and "ativado" or "desativado"))
+
+        task.spawn(function()
+            while antiSitActive and LocalPlayer.Character do
+                local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+
+                if humanoid then
+                    humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+
+                    if humanoid:GetState() == Enum.HumanoidStateType.Seated then
+                        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+                    end
+                end
+
+                task.wait(0.05)
+            end
+
+            if LocalPlayer.Character then
+                local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+                end
+            end
+        end)
+    end
+})
+
+--================ ANTI LAG (COMPLETO) =================
+Tab14:AddToggle({
+    Name = "Anti-Lag",
+    Default = false,
+    Callback = function(state)
+        local dedupLock = {}
+        local IGNORED_PLAYER
+
+        if not state then return end
+
+        local function marcarIgnorado(player)
+            IGNORED_PLAYER = player
+        end
+
+        local function isTool(inst)
+            return inst:IsA("Tool")
+        end
+
+        local function gatherTools(player)
+            local found = {}
+            local containers = {}
+
+            if player.Character then table.insert(containers, player.Character) end
+            local backpack = player:FindFirstChildOfClass("Backpack")
+            if backpack then table.insert(containers, backpack) end
+            local sg = player:FindFirstChild("StarterGear")
+            if sg then table.insert(containers, sg) end
+
+            for _, container in ipairs(containers) do
+                for _, child in ipairs(container:GetChildren()) do
+                    if isTool(child) then
+                        table.insert(found, child)
+                    end
+                end
+            end
+
+            return found
+        end
+
+        local function dedupePlayer(player)
+            if player == IGNORED_PLAYER then return end
+            if dedupLock[player] then return end
+
+            dedupLock[player] = true
+
+            local tools = gatherTools(player)
+            if #tools > 1 then
+                for i = 2, #tools do
+                    pcall(function() tools[i]:Destroy() end)
+                end
+            end
+
+            dedupLock[player] = false
+        end
+
+        local function hookPlayer(player)
+            if not IGNORED_PLAYER then
+                marcarIgnorado(player)
+            end
+
+            task.defer(dedupePlayer, player)
+
+            local function setupChar(char)
+                task.delay(0.5, function()
+                    dedupePlayer(player)
+                end)
+
+                char.ChildAdded:Connect(function(child)
+                    if isTool(child) then
+                        task.delay(0.1, function()
+                            dedupePlayer(player)
+                        end)
+                    end
+                end)
+            end
+
+            if player.Character then
+                setupChar(player.Character)
+            end
+
+            player.CharacterAdded:Connect(setupChar)
+
+            local backpack = player:WaitForChild("Backpack", 10)
+            if backpack then
+                backpack.ChildAdded:Connect(function(child)
+                    if isTool(child) then
+                        task.delay(0.1, function()
+                            dedupePlayer(player)
+                        end)
+                    end
+                end)
+            end
+        end
+
+        Players.PlayerAdded:Connect(hookPlayer)
+
+        for _, plr in ipairs(Players:GetPlayers()) do
+            hookPlayer(plr)
+        end
+
+        task.spawn(function()
+            while state do
+                for _, plr in ipairs(Players:GetPlayers()) do
+                    dedupePlayer(plr)
+                end
+                task.wait(2)
+            end
+        end)
+    end
+})
+
+--================ ANTI PORTAS =================
+Tab14:AddToggle({
+    Name = "Anti Fling Portas",
+    Default = false,
+    Callback = function(state)
+        if not _G.hiddenDoors then _G.hiddenDoors = {} end
+
+        if state then
+            _G.hiddenDoors = {}
+
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and obj.Name:lower():find("door") then
+
+                    local data = {
+                        door = obj,
+                        t = obj.Transparency,
+                        c = obj.CanCollide,
+                        s = obj.CastShadow
+                    }
+
+                    obj.Transparency = 1
+                    obj.CanCollide = false
+                    obj.CastShadow = false
+
+                    for _, child in ipairs(obj:GetChildren()) do
+                        if child:IsA("BasePart") then
+                            child.Transparency = 1
+                            child.CanCollide = false
+                        elseif child:IsA("SurfaceGui") or child:IsA("BillboardGui") then
+                            child.Enabled = false
+                        end
+                    end
+
+                    table.insert(_G.hiddenDoors, data)
+                end
+            end
+
+            Notify(#_G.hiddenDoors.." portas escondidas")
+
+        else
+            for _, d in ipairs(_G.hiddenDoors) do
+                if d.door and d.door.Parent then
+                    d.door.Transparency = d.t
+                    d.door.CanCollide = d.c
+                    d.door.CastShadow = d.s
+
+                    for _, child in ipairs(d.door:GetChildren()) do
+                        if child:IsA("BasePart") then
+                            child.Transparency = 0
+                            child.CanCollide = true
+                        elseif child:IsA("SurfaceGui") or child:IsA("BillboardGui") then
+                            child.Enabled = true
+                        end
+                    end
+                end
+            end
+
+            _G.hiddenDoors = {}
+            Notify("Portas restauradas")
+        end
+    end
+})
+
+
+
+
+
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/djhehdhdjdjdjdbfb-sys/Meu-Script-hahahahah/refs/heads/main/0556e87d696fbb48.lua%20(1).txt"))()
+
+
+
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/djhehdhdjdjdjdbfb-sys/Meu-Script-hahahahah/refs/heads/main/Spectra%20props%20(1).txt"))()
