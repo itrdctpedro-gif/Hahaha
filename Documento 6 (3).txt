@@ -988,17 +988,40 @@ TrollTab:AddButton({
 })
 
 
-TrollTab:AddSection({"killS"})
+TrollTab:AddSection({"metodos"})
 
 
+
+
+local selectedKillMethod = "Sofa"
+
+--------------------------------------------------
+-- DROPDOWN
+--------------------------------------------------
+TrollTab:AddDropdown({
+    Name = "Escolher metodos",
+    Options = {"Sofa", "Bus"},
+    Default = "Sofa",
+    Callback = function(v)
+        selectedKillMethod = v
+    end
+})
+
+--------------------------------------------------
+-- VARIÁVEIS
+--------------------------------------------------
 local running = false
 local seated = false
 local sitConn
+local killRunning = false
 
--- RESET QUANDO MORRER
+--------------------------------------------------
+-- RESET
+--------------------------------------------------
 plr.CharacterAdded:Connect(function()
     running = false
     seated = false
+    killRunning = false
 
     if sitConn then
         sitConn:Disconnect()
@@ -1006,130 +1029,256 @@ plr.CharacterAdded:Connect(function()
     end
 end)
 
+--------------------------------------------------
+-- BOTÃO
+--------------------------------------------------
 TrollTab:AddButton({
-    Name = "KILL",
+    Name = "kill",
     Callback = function()
 
-        if running or not selectedPlayer then return end
-
-        local character = plr.Character
-        if not character then return end
-
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        local hrp = character:FindFirstChild("HumanoidRootPart")
-        if not humanoid or not hrp then return end
-
-        local target = Players:FindFirstChild(selectedPlayer)
-        if not target or not target.Character then return end
-
-        local targetHumanoid = target.Character:FindFirstChild("Humanoid")
-        local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
-        if not targetHumanoid or not targetHRP then return end
-
-        running = true
-        seated = false
-
-        -- BODY SIZE
-        for i = 1,12 do
-            ReplicatedStorage.Remotes.IncrementBodySize:FireServer(false)
+        if not selectedPlayer then
+            warn("Nenhum jogador selecionado!")
+            return
         end
 
-        -- PEGAR COUCH
-        local hasCouch = false
+        --------------------------------------------------
+        -- SOFA (SEM BODY SIZE)
+        --------------------------------------------------
+        if selectedKillMethod == "Sofa" then
 
-        if character:FindFirstChild("Couch") then
-            hasCouch = true
-        end
+            if running then return end
 
-        for _,tool in ipairs(plr.Backpack:GetChildren()) do
-            if tool.Name == "Couch" then
+            local character = plr.Character
+            if not character then return end
+
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            local hrp = character:FindFirstChild("HumanoidRootPart")
+            if not humanoid or not hrp then return end
+
+            local target = Players:FindFirstChild(selectedPlayer)
+            if not target or not target.Character then return end
+
+            local targetHumanoid = target.Character:FindFirstChild("Humanoid")
+            local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+            if not targetHumanoid or not targetHRP then return end
+
+            running = true
+            seated = false
+
+            -- PEGAR COUCH
+            local hasCouch = false
+
+            if character:FindFirstChild("Couch") then
                 hasCouch = true
             end
-        end
 
-        if not hasCouch then
-            ReplicatedStorage.RE["1Too1l"]:InvokeServer("PickingTools","Couch")
-            task.wait(0.3)
-        end
-
-        local couch = plr.Backpack:FindFirstChild("Couch")
-        if couch then
-            humanoid:EquipTool(couch)
-        end
-
-        task.wait(0.2)
-
-        hrp.CFrame = targetHRP.CFrame * CFrame.new(0,0,-2)
-
-        if sitConn then
-            sitConn:Disconnect()
-        end
-
-        sitConn = targetHumanoid.Seated:Connect(function(active)
-
-            if active then
-                seated = true
-                running = false
-
-                sitConn:Disconnect()
-
-                hrp.CFrame = CFrame.new(-54.24,-298.21,-184.12)
-
-                task.wait(0.3)
-
-                humanoid:UnequipTools()
-
-                task.wait(0.7)
-
-                hrp.CFrame = CFrame.new(-27.59,4.27,-16.84)
+            for _,tool in ipairs(plr.Backpack:GetChildren()) do
+                if tool.Name == "Couch" then
+                    hasCouch = true
+                end
             end
 
-        end)
+            if not hasCouch then
+                ReplicatedStorage.RE["1Too1l"]:InvokeServer("PickingTools","Couch")
+                task.wait(0.3)
+            end
 
-        task.spawn(function()
+            local couch = plr.Backpack:FindFirstChild("Couch")
+            if couch then
+                humanoid:EquipTool(couch)
+            end
 
-            local tickSide = 1
+            task.wait(0.2)
 
-            while running and not seated do
+            hrp.CFrame = targetHRP.CFrame * CFrame.new(0,0,-2)
 
-                local base = targetHRP.Position
+            if sitConn then
+                sitConn:Disconnect()
+            end
 
-                local offsets = {
+            sitConn = targetHumanoid.Seated:Connect(function(active)
 
-                    Vector3.new(3 * tickSide,0,0),
-                    Vector3.new(-3 * tickSide,0,0),
-                    Vector3.new(0,0,3 * tickSide),
-                    Vector3.new(0,0,-3 * tickSide),
-                    Vector3.new(0,3,0),
-                    Vector3.new(0,-3,0),
-                    Vector3.new(1.5,-3.2,1.5),
-                    Vector3.new(-1.5,-3.2,-1.5)
+                if active then
+                    seated = true
+                    running = false
 
-                }
+                    sitConn:Disconnect()
 
-                for _,off in ipairs(offsets) do
+                    hrp.CFrame = CFrame.new(-54.24,-298.21,-184.12)
 
-                    if not running or seated then break end
+                    task.wait(0.3)
 
-                    hrp.CFrame = CFrame.new(base + off, base)
+                    humanoid:UnequipTools()
 
-                    task.wait(0.035)
+                    task.wait(0.7)
 
+                    hrp.CFrame = CFrame.new(-27.59,4.27,-16.84)
                 end
 
-                tickSide = -tickSide
+            end)
 
+            task.spawn(function()
+
+                local tickSide = 1
+
+                while running and not seated do
+
+                    local base = targetHRP.Position
+
+                    local offsets = {
+                        Vector3.new(3.4 * tickSide,0,0),
+                        Vector3.new(-2 * tickSide,0,0),
+                        Vector3.new(0,0,3 * tickSide),
+                        Vector3.new(0,0,-3 * tickSide),
+                        Vector3.new(0,4,0),
+                        Vector3.new(0,-3,0),
+                        Vector3.new(3.5,-3.2,1.9),
+                        Vector3.new(-2.5,-9.2,-1.5)
+                    }
+
+                    for _,off in ipairs(offsets) do
+                        if not running or seated then break end
+                        hrp.CFrame = CFrame.new(base + off, base)
+                        task.wait(0.035)
+                    end
+
+                    tickSide = -tickSide
+                end
+
+            end)
+
+        --------------------------------------------------
+        -- BUS (COMPLETO)
+        --------------------------------------------------
+        elseif selectedKillMethod == "Bus" then
+
+            killRunning = true
+
+            local Player = game.Players.LocalPlayer
+            local Character = Player.Character or Player.CharacterAdded:Wait()
+            local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+            local RootPart = Character:FindFirstChild("HumanoidRootPart")
+            local Vehicles = workspace:FindFirstChild("Vehicles")
+            local OldPos = RootPart and RootPart.CFrame
+
+            if not Humanoid or not RootPart then return end
+
+            RootPart.CFrame = CFrame.new(1118.81, 75.998, -1138.61)
+            task.wait(0.5)
+
+            local PCar = Vehicles and Vehicles:FindFirstChild(Player.Name.."Car")
+            if not PCar then
+                game.ReplicatedStorage.RE:FindFirstChild("1Ca1r"):FireServer("PickingCar", "SchoolBus")
+                task.wait(1)
+                PCar = Vehicles:FindFirstChild(Player.Name.."Car")
             end
 
-        end)
+            RootPart.CFrame = CFrame.new(1108.079956, 78.852867, -1146.426147)
+            task.wait(0.4)
+
+            if PCar then
+                local Seat = PCar:FindFirstChild("Body") and PCar.Body:FindFirstChild("VehicleSeat")
+                if Seat then
+                    for i = 1, 2 do
+                        Seat:Sit(Humanoid)
+                        local timeout = tick() + 1
+                        repeat task.wait(0.2) until Humanoid.Sit or tick() > timeout
+                        if Humanoid.Sit then break end
+                    end
+                end
+            end
+
+            if PCar and not PCar.PrimaryPart then
+                local Body = PCar:FindFirstChild("Body")
+                if Body and Body:FindFirstChild("VehicleSeat") then
+                    PCar.PrimaryPart = Body.VehicleSeat
+                end
+            end
+
+            local TargetPlayer = game.Players:FindFirstChild(selectedPlayer)
+            if TargetPlayer then
+                local TargetC = TargetPlayer.Character
+                local TargetH = TargetC and TargetC:FindFirstChildOfClass("Humanoid")
+                local TargetRP = TargetC and TargetC:FindFirstChild("HumanoidRootPart")
+
+                if TargetC and TargetH and TargetRP and not TargetH.Sit then
+                    while TargetH.Health > 0 and not TargetH.Sit and killRunning do
+                        task.wait()
+
+                        local randomX, randomY, randomZ =
+                            math.random(-360,360),
+                            math.random(-360,360),
+                            math.random(-360,360)
+
+                        local function kill(alvo, pos, angulo)
+                            if PCar and PCar.PrimaryPart then
+                                PCar:PivotTo(CFrame.new(alvo.Position) * pos * angulo)
+                            end
+                        end
+
+                        local offset = TargetH.MoveDirection * (TargetRP.Velocity.Magnitude / 1.05)
+
+                        kill(TargetRP, CFrame.new(0,1,0) + offset, CFrame.Angles(math.rad(randomX),math.rad(randomY),math.rad(randomZ)))
+                        kill(TargetRP, CFrame.new(0,-2.25,5) + offset, CFrame.Angles(math.rad(randomX),math.rad(randomY),math.rad(randomZ)))
+                        kill(TargetRP, CFrame.new(0,2.25,0.25) + offset, CFrame.Angles(math.rad(randomX),math.rad(randomY),math.rad(randomZ)))
+                        kill(TargetRP, CFrame.new(-2.25,-1.5,2.25) + offset, CFrame.Angles(math.rad(randomX),math.rad(randomY),math.rad(randomZ)))
+                        kill(TargetRP, CFrame.new(0,1.5,0) + offset, CFrame.Angles(math.rad(randomX),math.rad(randomY),math.rad(randomZ)))
+                        kill(TargetRP, CFrame.new(0,-1.5,0) + offset, CFrame.Angles(math.rad(randomX),math.rad(randomY),math.rad(randomZ)))
+                    end
+
+                    task.wait(0.1)
+
+                    if PCar and PCar.PrimaryPart then
+                        PCar:PivotTo(CFrame.new(0,-470,0))
+                    end
+
+                    task.wait(0.2)
+                    Humanoid.Sit = false
+                    task.wait(0.1)
+                    RootPart.CFrame = OldPos
+
+                    game:GetService("ReplicatedStorage").RE:FindFirstChild("1Ca1r"):FireServer("DeleteAllVehicles")
+                end
+            end
+        end
 
     end
 })
 
 
+TrollTab:AddButton({
+    Name = "parar",
+    Description = "Para qualquer kill ativo",
+    Callback = function()
+
+        -- PARA SOFA
+        running = false
+        seated = false
+
+        if sitConn then
+            sitConn:Disconnect()
+            sitConn = nil
+        end
+
+        -- PARA BUS
+        killRunning = false
+
+        -- LEVANTAR (caso esteja sentado)
+        local char = plr.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.Sit = false
+            end
+        end
+
+        warn("Kill parado.")
+    end
+})
 
 
 
+TrollTab:AddSection({"kill barco"})
 
 
 
@@ -1176,7 +1325,7 @@ TrollTab:AddButton({
         task.wait(0.7)
 
         -- TELEPORTAR PARA POSIÇÃO DE SENTAR
-        hrp.CFrame = CFrame.new(1767.14,0.70,54.58) * CFrame.Angles(math.rad(0.25),math.rad(83.03),0)
+        hrp.CFrame = CFrame.new(1767.14,3.10,54.58) * CFrame.Angles(math.rad(0.25),math.rad(83.03),0)
 
         -- ESPERAR SENTAR
         repeat task.wait() until humanoid.Sit
@@ -1263,8 +1412,7 @@ TrollTab:AddButton({
     end
 })
 
-
-
+TrollTab:AddSection({"bring"})
 
 TrollTab:AddButton({
     Name = "bring boat pirate",
@@ -4434,208 +4582,246 @@ local MusicTab = Window:MakeTab({
 MusicTab:AddSection({ "É preciso game pass para ouvir as músicas" })
 
 --==================================================
--- TABELAS COMPLETAS
+-- TABELAS COMPLETAS (ORDENADAS)
 --==================================================
 
 local Phonk = {
-["Montagem Espanca Loli"] = "98623641908787",
-["Montagem os 3 macete"] = "138730944430517",
-["MONTAGEM AUTOMOTIVA DO FUTURO"] = "87299594714360",
-["MONTAGEM VEM F*D*R NA ONDA DA LOLO"] = "79919454273891",
-["Automotivo new"] = "135721378392049",
-["MONTAGEM SANTA "] = "132597601384537",
-["Montagem soca na danada"] = "100337717591420",
-["Montagem Emirados Ãrabe"] = "98412934676146",
-["Montagem Espanca Mente 2"] = "135729578171550",
-["Montagem estoura tÃ­mpano"] = "113624200970506",
-["Montagem da uma baforada"] = "76983583262607",
-["Montagem quebra cama"] = "104976012074245",
-["Montagem Terror dos 7 mares DJ OBC"] = "101658851913310",
-["Montagem Mini game"] = "85014780788991",
-["Montagem berimbau sequencial"] = "71619650167212",
-["Montagem submundo GH7"] = "137107451922636",
-["Montagem Abravanel"] = "78614982249626",
-["Montagem beat panelado"] = "105438850576001",
-["entre clxy"] = "110274202819990",
-["montagem encanta"] = "74258284867725",
-["montagem Speed"] = "120342836549924",
-["montagem Nova geraÃ§Ã£o"] = "119293698405737",
-["montagem senta senta"] = "83656625240780",
-["montagem boa nÃ£o sei o nome"] = "105663768150465",
-["montagem risada sombria"] = "93556552625864",
-["montagem do karma"] = "79148752172118",
-["entre"] = "110274202819990",
-["kobal"] = "79381341943021",
-["estourada"] = "92175624643620",
-["estourada 2"] = "108099943758978",
-["montagem no Money"] = "133498664318216",
-["montagem emote"] = "121803455304591",
-["vamo agressiva"] = "82680101995105",
-["perdi o nome"] = "113494161114548",
-["mtg phonk"] = "77148331286853",
-["potencial"] = "102333287500691",
-["passo bem solto"] = "127388462601694",
-["montagem diamante"] = "113208690604605",
-["montagem lualua"] = "759649143831591",
-["montagem ma"] = "98337901681441",
-["montagem relacionamento"] = "113072044238343",
-["montagem vocÃª sabe a diferenÃ§a?"] = "107260053679799",
-["montagem um pouco mais"] = "81665575945119",
-["montagem link 30!"] = "120189561947098",
-["montagem enlouquecer"] = "121703297529684",
-["montagem bailÃ£o"] = "129071695986627",
-["tomagi mo tÃ£o"] = "111668097052966",
-["Batalla de bombas"] = "71995582569283",
-["Another hiit"] = "99731755429975",
-["Want To Love"] = "104846670980072",
-["Onichan"] = "17422156627",
-["gol contra"] = "122114766584918",
-["Trying To finde"] = "132643763204246",
-["Montagem Sinistra Dz7"] = "78098390943739"
+    {Name = "Montagem Espanca Loli", Id = "98623641908787"},
+    {Name = "Montagem os 3 Macete", Id = "138730944430517"},
+    {Name = "Montagem Automotiva do Futuro", Id = "87299594714360"},
+    {Name = "Montagem Vem F*der na Onda da Lolo", Id = "79919454273891"},
+    {Name = "Automotivo New", Id = "135721378392049"},
+    {Name = "Montagem Santa", Id = "132597601384537"},
+    {Name = "Montagem Soca na Danada", Id = "100337717591420"},
+    {Name = "Montagem Emirados Árabes", Id = "98412934676146"},
+    {Name = "Montagem Espanca Mente 2", Id = "135729578171550"},
+    {Name = "Montagem Estoura Tímpano", Id = "113624200970506"},
+    {Name = "Montagem Dá uma Baforada", Id = "76983583262607"},
+    {Name = "Montagem Quebra Cama", Id = "104976012074245"},
+    {Name = "Montagem Terror dos 7 Mares DJ OBC", Id = "101658851913310"},
+    {Name = "Montagem Mini Game", Id = "85014780788991"},
+    {Name = "Montagem Berimbau Sequencial", Id = "71619650167212"},
+    {Name = "Montagem Submundo GH7", Id = "137107451922636"},
+    {Name = "Montagem Abravanel", Id = "78614982249626"},
+    {Name = "Montagem Beat Panelado", Id = "105438850576001"},
+    {Name = "Entre Clxy", Id = "110274202819990"},
+    {Name = "Montagem Encanta", Id = "74258284867725"},
+    {Name = "Montagem Speed", Id = "120342836549924"},
+    {Name = "Montagem Nova Geração", Id = "119293698405737"},
+    {Name = "Montagem Senta Senta", Id = "83656625240780"},
+    {Name = "Montagem Boa Não Sei o Nome", Id = "105663768150465"},
+    {Name = "Montagem Risada Sombria", Id = "93556552625864"},
+    {Name = "Montagem do Karma", Id = "79148752172118"},
+    {Name = "Entre", Id = "110274202819990"},
+    {Name = "Kobal", Id = "79381341943021"},
+    {Name = "Estourada", Id = "92175624643620"},
+    {Name = "Estourada 2", Id = "108099943758978"},
+    {Name = "Montagem no Money", Id = "133498664318216"},
+    {Name = "Montagem Emote", Id = "121803455304591"},
+    {Name = "Vamo Agressiva", Id = "82680101995105"},
+    {Name = "Perdi o Nome", Id = "113494161114548"},
+    {Name = "Mtg Phonk", Id = "77148331286853"},
+    {Name = "Potencial", Id = "102333287500691"},
+    {Name = "Passo Bem Solto", Id = "127388462601694"},
+    {Name = "Montagem Diamante", Id = "113208690604605"},
+    {Name = "Montagem Lualua", Id = "759649143831591"},
+    {Name = "Montagem Ma", Id = "98337901681441"},
+    {Name = "Montagem Relacionamento", Id = "113072044238343"},
+    {Name = "Montagem Você Sabe a Diferença?", Id = "107260053679799"},
+    {Name = "Montagem Um Pouco Mais", Id = "81665575945119"},
+    {Name = "Montagem Link 30!", Id = "120189561947098"},
+    {Name = "Montagem Enlouquecer", Id = "121703297529684"},
+    {Name = "Montagem Bailão", Id = "129071695986627"},
+    {Name = "Tomagi Mo Tão", Id = "111668097052966"},
+    {Name = "Batalla de Bombas", Id = "71995582569283"},
+    {Name = "Another Hiit", Id = "99731755429975"},
+    {Name = "Want To Love", Id = "104846670980072"},
+    {Name = "Onichan", Id = "17422156627"},
+    {Name = "Gol Contra", Id = "122114766584918"},
+    {Name = "Trying To Finde", Id = "132643763204246"},
+    {Name = "Montagem Sinistra Dz7", Id = "78098390943739"}
 }
 
 local Funk = {
-["Automotivo no bico da garrafa"] = "107047372509033",
-["Chuva De Arroz"] = "102120036739514",
-["Piui Tic Tac - MC RD"] = "128599225685461",
-["Pega sente o som do tapa"] = "97708834121472",
-["vem socando "] = "114436245577405",
-["o japonêsinha"] = "73508063540527",
-["Senta tua GXSTXSX"] = "110176270788146",
-["Famosinha { Estourado}"] = "112406825739796",
-["OFF THE KING"] = "120324849313242",
-["amo"] = "96259351729049",
-["EntÃ£o desisti "] = "102878660090014",
-["Hoje eu vou pro baile trajardÃ£o de Nike"] = "107416893652681",
-["meu IPHONE"] = "103288558732219",
-["082 assombra"] = "139969588022082",
-["SEU EX TA NERVOSO DEMAIS"] = "125175056369746",
-["Me desbroqueia papai"] = "84571646803645",
-["ela e fogosa vem sentando"] = "76079350135381",
-["Baile dos antares "] = "16331041475",
-["CHARLIE KIRKY"] = "79910195620356",
-["Vai deitar sem sono"] = "128219511199109",
-["Novinha no grau"] = "100511855558684",
-["BROTA NA BASE"] = "72970505446502",
-["bota ela pra sentar"] = "133679572515204",
-["Ã­ndio"] = "133318423431098",
-["sperma"] = "73144366170218",
-["fantasma"] = "76699533647710",
-["Macporra"] = "102325227710789",
-["eu n sou gay"] = "85523458332774",
-["meia noite"] = "82117652303865",
-["uniÃ£o flasco"] = "81628621752701",
-["dom dom dom"] = "101882948595303",
-["tipo nino"] = "140336018782383",
-["nino pt2"] = "97708834121472",
-["puro lanÃ§a"] = "128441181589899",
-["danÃ§a do canguru"] = "86876136192157",
-["melodia"] = "139147474886402",
-["cappuccino assassino"] = "132733033157915",
-["bonde do Discord"] = "79581762870032",
-["bitch"] = "103288558732219",
-["rebola"] = "121046655523341",
-["posso atÃ© nÃ£o te dar flores"] = "107708637749079",
-["Savana Teto"] = "135327809788134",
-["bota aqui na base"] = "72970505446502",
-["AÃ­ que saudade do cherin do Block blashe"] = "124638151165836",
-["Tiger roubadona"] = "125329520501218",
-["Beat Malvado DJ OBL"] = "83174160244345",
-["Automotivo do Pou 2.0 DJ NK3"] = "104826703821683",
-["Recebi uma mensagem da sua amiguinha MC Lan"] = "130637458480604",
-["O meu carro bixo, motel de motor"] = "135005299702467",
-["O cheiro bom Ã© o de BCT"] = "117476956542254",
-["Amor Ã© mentira DJ Arana"] = "78544797215218",
-["Eu jÃ¡ sofri por amor"] = "128011871344522",
-["Na brisa uma japonesinha"] = "134130716324734",
-["MC Tuto Barbie"] = "134879044098791",
-["Pocket Renk do Halloween"] = "94600803570382",
-["Onda SubaquÃ¡tica"] = "75422081790794",
-["na onda berimbau"] = "140530013819453",
-["DJ Das Favela"] = "131489289833086",
-["M4 a1"] = "109403817807062",
-["raspa o cabelo dela"] = "106866829236727",
-["bata essa ####### aqui"] = "99250885177756",
-["mico"] = "78352220341424",
-["violen"] = "104767744632555",
-["Em Bora"] = "131847084942844",
-["PancadÃ£o"] = "76312991186384",
-["Vovo ta casado"] = "103336395794625",
-["Meno"] = "124899151072996",
-["Naruto"] = "89473100926016",
-["Querendo"] = "110877994245293",
-["Ei MoÃ§a"] = "138830667342178",
-["Empina na Onda"] = "104621031886653",
-["berimbau"] = "77712236704085",
-["Bonde da peixaria"] = "135355953783002",
-["deixa o portÃ£o aberto"] = "125323304808942",
-["funk da hora"] = "106958630419629",
-["funk pesadÃ£o"] = "72720721570850",
-["mtg funk"] = "81384105684889",
-["vapo vapo"] = "135903820233276",
-["pesadelo"] = "82016192638562",
-["ponto"] = "130758596227702",
-["fino"] = "107481584214750",
-["boneco"] = "122747553795687",
-["Seu FÃ£"] = "85342086082111",
-["GrelÃ´"] = "72200166265935",
-["Senta"] = "124085422276732",
-["Zum Zum Zum"] = "92446612272052",
-["sombria hahaha"] = "72855385972818",
-["Quem Ã© o Louco"] = "106958630419629",
-["coraÃ§Ã£o"] = "102705292327383",
-["Rave Favela"] = "127013133418864",
-["V7"] = "80348640826643",
-["Se Apaixona"] = "135662066137645",
-["melodia virtual"] = "139147474886402",
-["pixel"] = "93928823862203",
-["viagem sonora"] = "79349174602261",
-["sequÃªncia"] = "121187736532042",
-["Fuga Na Viatura"] = "131891110268352",
-["PenÃ©lope"] = "97011217688307",
-["eu jÃ¡ tava bem "] = "93590122047380",
-["Oruan - Sou Teu fÃ£"] = "85342086082111",
-["Grelo So fÃ©"] = "72200166265935",
-["Melodia Funk"] = "83064304128519",
-["Poze Cv"] = "124244582950595",
-["beats"] = "16190782181",
-["Soldado Guerreiro"] = "71590664026646",
-["bao"] = "89789578077519",
-["Uniao Flasco"] = "100989716917693"
+    {Name = "Automotivo no Bico da Garrafa", Id = "107047372509033"},
+    {Name = "Chuva De Arroz", Id = "102120036739514"},
+    {Name = "Piui Tic Tac - MC RD", Id = "128599225685461"},
+    {Name = "Pega Sente o Som do Tapa", Id = "97708834121472"},
+    {Name = "Vem Socando", Id = "114436245577405"},
+    {Name = "O Japonêsinha", Id = "73508063540527"},
+    {Name = "Senta Tua GXSTXSX", Id = "110176270788146"},
+    {Name = "Famosinha {Estourado}", Id = "112406825739796"},
+    {Name = "OFF THE KING", Id = "120324849313242"},
+    {Name = "Amo", Id = "96259351729049"},
+    {Name = "Então Desisti", Id = "102878660090014"},
+    {Name = "Hoje Eu Vou pro Baile Trajardão de Nike", Id = "107416893652681"},
+    {Name = "Meu IPHONE", Id = "103288558732219"},
+    {Name = "082 Assombra", Id = "139969588022082"},
+    {Name = "SEU EX TA NERVOSO DEMAIS", Id = "125175056369746"},
+    {Name = "Me Desbroqueia Papai", Id = "84571646803645"},
+    {Name = "Ela e Fogosa Vem Sentando", Id = "76079350135381"},
+    {Name = "Baile dos Antares", Id = "16331041475"},
+    {Name = "CHARLIE KIRKY", Id = "79910195620356"},
+    {Name = "Vai Deitar Sem Sono", Id = "128219511199109"},
+    {Name = "Novinha no Grau", Id = "100511855558684"},
+    {Name = "BROTA NA BASE", Id = "72970505446502"},
+    {Name = "Bota Ela pra Sentar", Id = "133679572515204"},
+    {Name = "Índio", Id = "133318423431098"},
+    {Name = "Sperma", Id = "73144366170218"},
+    {Name = "Fantasma", Id = "76699533647710"},
+    {Name = "Macporra", Id = "102325227710789"},
+    {Name = "Eu n Sou Gay", Id = "85523458332774"},
+    {Name = "Meia Noite", Id = "82117652303865"},
+    {Name = "União Flasco", Id = "81628621752701"},
+    {Name = "Dom Dom Dom", Id = "101882948595303"},
+    {Name = "Tipo Nino", Id = "140336018782383"},
+    {Name = "Nino Pt2", Id = "97708834121472"},
+    {Name = "Puro Lança", Id = "128441181589899"},
+    {Name = "Dança do Canguru", Id = "86876136192157"},
+    {Name = "Melodia", Id = "139147474886402"},
+    {Name = "Cappuccino Assassino", Id = "132733033157915"},
+    {Name = "Bonde do Discord", Id = "79581762870032"},
+    {Name = "Bitch", Id = "103288558732219"},
+    {Name = "Rebola", Id = "121046655523341"},
+    {Name = "Posso Até Não Te Dar Flores", Id = "107708637749079"},
+    {Name = "Savana Teto", Id = "135327809788134"},
+    {Name = "Bota Aqui na Base", Id = "72970505446502"},
+    {Name = "Aí Que Saudade do Cherin do Block Blashe", Id = "124638151165836"},
+    {Name = "Tiger Roubadona", Id = "125329520501218"},
+    {Name = "Beat Malvado DJ OBL", Id = "83174160244345"},
+    {Name = "Automotivo do Pou 2.0 DJ NK3", Id = "104826703821683"},
+    {Name = "Recebi Uma Mensagem da Sua Amiguinha MC Lan", Id = "130637458480604"},
+    {Name = "O Meu Carro Bixo, Motel de Motor", Id = "135005299702467"},
+    {Name = "O Cheiro Bom é o de BCT", Id = "117476956542254"},
+    {Name = "Amor é Mentira DJ Arana", Id = "78544797215218"},
+    {Name = "Eu Já Sofri Por Amor", Id = "128011871344522"},
+    {Name = "Na Brisa Uma Japonesinha", Id = "134130716324734"},
+    {Name = "MC Tuto Barbie", Id = "134879044098791"},
+    {Name = "Pocket Renk do Halloween", Id = "94600803570382"},
+    {Name = "Onda Subaquática", Id = "75422081790794"},
+    {Name = "Na Onda Berimbau", Id = "140530013819453"},
+    {Name = "DJ Das Favela", Id = "131489289833086"},
+    {Name = "M4 A1", Id = "109403817807062"},
+    {Name = "Raspa o Cabelo Dela", Id = "106866829236727"},
+    {Name = "Bata Essa ####### Aqui", Id = "99250885177756"},
+    {Name = "Mico", Id = "78352220341424"},
+    {Name = "Violen", Id = "104767744632555"},
+    {Name = "Em Bora", Id = "131847084942844"},
+    {Name = "Pancadão", Id = "76312991186384"},
+    {Name = "Vovô Tá Casado", Id = "103336395794625"},
+    {Name = "Meno", Id = "124899151072996"},
+    {Name = "Naruto", Id = "89473100926016"},
+    {Name = "Querendo", Id = "110877994245293"},
+    {Name = "Ei Moça", Id = "138830667342178"},
+    {Name = "Empina na Onda", Id = "104621031886653"},
+    {Name = "Berimbau", Id = "77712236704085"},
+    {Name = "Bonde da Peixaria", Id = "135355953783002"},
+    {Name = "Deixa o Portão Aberto", Id = "125323304808942"},
+    {Name = "Funk da Hora", Id = "106958630419629"},
+    {Name = "Funk Pesadão", Id = "72720721570850"},
+    {Name = "Mtg Funk", Id = "81384105684889"},
+    {Name = "Vapo Vapo", Id = "135903820233276"},
+    {Name = "Pesadelo", Id = "82016192638562"},
+    {Name = "Ponto", Id = "130758596227702"},
+    {Name = "Fino", Id = "107481584214750"},
+    {Name = "Boneco", Id = "122747553795687"},
+    {Name = "Seu Fã", Id = "85342086082111"},
+    {Name = "Grelô", Id = "72200166265935"},
+    {Name = "Senta", Id = "124085422276732"},
+    {Name = "Zum Zum Zum", Id = "92446612272052"},
+    {Name = "Sombria Hahaha", Id = "72855385972818"},
+    {Name = "Quem é o Louco", Id = "106958630419629"},
+    {Name = "Coração", Id = "102705292327383"},
+    {Name = "Rave Favela", Id = "127013133418864"},
+    {Name = "V7", Id = "80348640826643"},
+    {Name = "Se Apaixona", Id = "135662066137645"},
+    {Name = "Melodia Virtual", Id = "139147474886402"},
+    {Name = "Pixel", Id = "93928823862203"},
+    {Name = "Viagem Sonora", Id = "79349174602261"},
+    {Name = "Sequência", Id = "121187736532042"},
+    {Name = "Fuga Na Viatura", Id = "131891110268352"},
+    {Name = "Penélope", Id = "97011217688307"},
+    {Name = "Eu Já Tava Bem", Id = "93590122047380"},
+    {Name = "Oruan - Sou Teu Fã", Id = "85342086082111"},
+    {Name = "Grelo Só Fé", Id = "72200166265935"},
+    {Name = "Melodia Funk", Id = "83064304128519"},
+    {Name = "Poze Cv", Id = "124244582950595"},
+    {Name = "Beats", Id = "16190782181"},
+    {Name = "Soldado Guerreiro", Id = "71590664026646"},
+    {Name = "Bao", Id = "89789578077519"},
+    {Name = "Uniao Flasco", Id = "100989716917693"}
 }
 
 local Forro = {
-["Em breve mais mÃºsicas"] = "",
-["forrÃ³ ja cansou"] = "74812784884330",
-["escolha certa"] = "107088620814881",
-["EU TAVA AQUI PENSANDO"] = "82929658013383",
-["Se eu velejar"] = "108383593687416",
-["lembro ate hoje"] = "71531533552899",
-["JÃ¡ Que Me Ensinou a Beber"] = "103709364683928",
-["Se Eu Velejar"] = "108383593687416",
-["forrÃ³ da resenha"] = "120973520531216"
+    {Name = "Em Breve Mais Músicas", Id = ""},
+    {Name = "Forró Já Cansou", Id = "74812784884330"},
+    {Name = "Escolha Certa", Id = "107088620814881"},
+    {Name = "Eu Tava Aqui Pensando", Id = "82929658013383"},
+    {Name = "Se Eu Velejar", Id = "108383593687416"},
+    {Name = "Lembro Até Hoje", Id = "71531533552899"},
+    {Name = "Já Que Me Ensinou a Beber", Id = "103709364683928"},
+    {Name = "Se Eu Velejar", Id = "108383593687416"},
+    {Name = "Forró da Resenha", Id = "120973520531216"}
 }
 
 local Aleatorio = {
-["Em breve mais mÃºsicas"] = "",
-["Carro do Ovos"] = "3148329638",
-["confession"] = "92992163303925",
-["fa3 renitch"] = "128934903242385",
-["Kawaii"] = "13067828528278",
-["Feeling"] = "120764084521465",
-["Aura + Egp"] = "97841988407875",
-["The Twelve"] = "126153082683694",
-["brazino777"] = "113342607476775",
-["Samba"] = "1836175030",
-["Samba2"] = "1838888602",
-["Banka"] = "16190784229",
-["Blassed Mane"] = "16831108393",
-["hoodtrap"] = "73685038553576",
-["I love you so"] = "98364034458260",
-["Trap"] = "131582258401093",
-["Anxiety"] = "101483901475189",
-["Nooo"] = "73685038553576",
-["tuber 93"] = "1839246711"
+    {Name = "Em Breve Mais Músicas", Id = ""},
+    {Name = "Carro do Ovos", Id = "3148329638"},
+    {Name = "Confession", Id = "92992163303925"},
+    {Name = "Fa3 Renitch", Id = "128934903242385"},
+    {Name = "Kawaii", Id = "13067828528278"},
+    {Name = "Feeling", Id = "120764084521465"},
+    {Name = "Aura + Egp", Id = "97841988407875"},
+    {Name = "The Twelve", Id = "126153082683694"},
+    {Name = "Brazino777", Id = "113342607476775"},
+    {Name = "Samba", Id = "1836175030"},
+    {Name = "Samba2", Id = "1838888602"},
+    {Name = "Banka", Id = "16190784229"},
+    {Name = "Blassed Mane", Id = "16831108393"},
+    {Name = "Hoodtrap", Id = "73685038553576"},
+    {Name = "I Love You So", Id = "98364034458260"},
+    {Name = "Trap", Id = "131582258401093"},
+    {Name = "Anxiety", Id = "101483901475189"},
+    {Name = "Nooo", Id = "73685038553576"},
+    {Name = "Tuber 93", Id = "1839246711"}
+}
+
+local IdsAleatorios = {
+    {Name = "107027481244497", Id = "107027481244497"},
+    {Name = "130149486547895", Id = "130149486547895"},
+    {Name = "110204841162999", Id = "110204841162999"},
+    {Name = "91976386006545", Id = "91976386006545"},
+    {Name = "124652802314600", Id = "124652802314600"},
+    {Name = "94672348312515", Id = "94672348312515"},
+    {Name = "140336018782383", Id = "140336018782383"},
+    {Name = "75839538917529", Id = "75839538917529"},
+    {Name = "76860168288557", Id = "76860168288557"},
+    {Name = "122292837904105", Id = "122292837904105"},
+    {Name = "122938948937941", Id = "122938948937941"},
+    {Name = "931712380313", Id = "931712380313"},
+    {Name = "105087432835452", Id = "105087432835452"},
+    {Name = "115892145725960", Id = "115892145725960"},
+    {Name = "110919391228823", Id = "110919391228823"},
+    {Name = "96259351729049", Id = "96259351729049"},
+    {Name = "133623839519479", Id = "133623839519479"},
+    {Name = "79518570188204", Id = "79518570188204"},
+    {Name = "127775034804421", Id = "127775034804421"},
+    {Name = "107416893652681", Id = "107416893652681"},
+    {Name = "136893418307185", Id = "136893418307185"},
+    {Name = "86162096510351", Id = "86162096510351"},
+    {Name = "96812105354802", Id = "96812105354802"},
+    {Name = "91493452201730", Id = "91493452201730"},
+    {Name = "91946302508743", Id = "91946302508743"},
+    {Name = "95197852052116", Id = "95197852052116"},
+    {Name = "84349909808037", Id = "84349909808037"},
+    {Name = "104621031886653", Id = "104621031886653"},
+    {Name = "72292775537021", Id = "72292775537021"},
+    {Name = "82274171534549", Id = "82274171534549"},
+    {Name = "105537146628765", Id = "105537146628765"},
+    {Name = "107434160225620", Id = "107434160225620"},
+    {Name = "82352229287327", Id = "82352229287327"},
+    {Name = "87071452859283", Id = "87071452859283"},
+    {Name = "89595725408344", Id = "89595725408344"}
 }
 
 --==================================================
@@ -4655,30 +4841,36 @@ local function playMusic(id)
 end
 
 --==================================================
--- DROPDOWN FUNCIONAL
+-- DROPDOWN FUNCIONAL (ORDENADO)
 --==================================================
 local function makeDropdown(tab, name, data)
     local options = {}
-    for k,_ in pairs(data) do
-        table.insert(options, k)
+    for i, item in ipairs(data) do
+        table.insert(options, item.Name)
     end
 
     tab:AddDropdown({
         Name = name,
         Options = options,
         Callback = function(Value)
-            local id = data[Value]
-            if id and id ~= "" then
-                playMusic(id)
+            for i, item in ipairs(data) do
+                if item.Name == Value then
+                    playMusic(item.Id)
+                    break
+                end
             end
         end
     })
 end
 
+--==================================================
+-- CRIAR DROPDOWNS
+--==================================================
 makeDropdown(MusicTab, "Funk", Funk)
 makeDropdown(MusicTab, "Phonk", Phonk)
 makeDropdown(MusicTab, "Forró", Forro)
 makeDropdown(MusicTab, "Aleatórios", Aleatorio)
+makeDropdown(MusicTab, "IDs Aleatórios", IdsAleatorios)
 
 --==================================================
 -- BOTÃO PARAR MÚSICA
@@ -4724,6 +4916,7 @@ MusicTab:AddButton({
         end
     end
 })
+
 
 
 
