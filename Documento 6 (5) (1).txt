@@ -1934,7 +1934,7 @@ end
 
 
 
-TrollTab:AddSection({"anti tools"})
+TrollTab:AddSection({"Roubar itens dos players"})
 
 -- SERVICES
 local Players = game:GetService("Players")
@@ -1989,7 +1989,7 @@ end
 --------------------------------------------------
 
 TrollTab:AddToggle({
-    Name = "Anti Tools ALL",
+    Name = "rouba all",
     Default = false,
     Callback = function(v)
 
@@ -2209,10 +2209,13 @@ TrollTab:AddToggle({
 
 
 
+
+
+
 --////////////////////////////////////////////////////
---// SKYBOX TAB (versão sem alteração automática)
+--// SKYBOX TAB (versÃ£o sem alteraÃ§Ã£o automÃ¡tica)
 local skyboxTab = Window:MakeTab({
-    Title = "Skybox e Nuke",
+    Title = "Skybox | Nuke",
     Icon = "rbxassetid://7733746980"
 })
 
@@ -2225,7 +2228,7 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local humanoid = Character:WaitForChild("Humanoid")
 
 --====================================================
--- VARIÁVEIS GLOBAIS DO MÓDULO
+-- VARIÃVEIS GLOBAIS DO MÃ“DULO
 local NukeActive = false
 local SkyboxActive = false
 
@@ -2238,7 +2241,7 @@ local SkyboxSavedBody = {}
 local RestoreExecuted = false
 
 --====================================================
--- FUNÇÕES AUXILIARES (comuns)
+-- FUNÃ‡Ã•ES AUXILIARES (comuns)
 
 local function stopTracks(tbl)
     for _, t in pairs(tbl) do
@@ -2292,18 +2295,18 @@ local function executeFinalRestore()
 end
 
 --====================================================
--- N U K E (versão 1)
+-- N U K E (versÃ£o 1)
 
 skyboxTab:AddSection({"Nuke"})
 
 do
-    local initialized = false  -- controle para evitar execução na criação
+    local initialized = false  -- controle para evitar execuÃ§Ã£o na criaÃ§Ã£o
     skyboxTab:AddToggle({
         Name = "Nuke",
         Default = false,
         Callback = function(value)
             if not initialized and value == false then
-                -- primeira chamada com false: ignorar (é a inicialização)
+                -- primeira chamada com false: ignorar (Ã© a inicializaÃ§Ã£o)
                 initialized = true
                 return
             end
@@ -2364,7 +2367,7 @@ skyboxTab:AddToggle({
     Name = "Nuke FlashBack",
     Default = false,
     Callback = function(value)
-        if not value then return end  -- só executa se ativado
+        if not value then return end  -- sÃ³ executa se ativado
         stopTracks(NukeTracks)
         local anim = Instance.new("Animation")
         anim.AnimationId = "rbxassetid://70883871260184"
@@ -2376,9 +2379,9 @@ skyboxTab:AddToggle({
 })
 
 --====================================================
--- N U K E OP (versão 2)
+-- N U K E OP (versÃ£o 2)
 
-skyboxTab:AddSection({"Nuke op"})
+skyboxTab:AddSection({"Nukes"})
 
 do
     local initialized = false
@@ -2437,6 +2440,403 @@ do
         end
     })
 end
+
+
+
+
+--====================================================
+-- N U K E  H Y P E R S P E E D (ANIMAÃ‡Ã•ES EXTREMAMENTE RÃPIDAS)
+
+
+do
+    local initialized = false
+    local NukeHyperActive = false
+    local NukeHyperTracks = {}
+    local NukeHyperSavedBody = {}
+    local NukeHyperThread
+
+    skyboxTab:AddToggle({
+        Name = "Nuke 2",
+        Default = false,
+
+        Callback = function(value)
+
+            if not initialized and value == false then
+                initialized = true
+                return
+            end
+
+            initialized = true
+
+            if value then
+
+                RestoreExecuted = false
+
+                if SkyboxActive then
+                    SkyboxActive = false
+                    stopTracks(SkyboxTracks)
+                    restoreBody(SkyboxSavedBody)
+                end
+
+                if NukeActive then
+                    NukeActive = false
+                    stopTracks(NukeTracks)
+                    restoreBody(NukeSavedBody)
+                end
+
+                NukeHyperActive = true
+                saveBody(NukeHyperSavedBody)
+
+                task.wait(0.2)
+
+                -- corpo pesado
+                pcall(function()
+                    ReplicatedStorage.Remotes.ChangeCharacterBody:InvokeServer({
+                        123402086843885,
+                        96655874457685,
+                        100839513065432,
+                        86276701020724,
+                        78409653958165,
+                        120668655481073
+                    })
+                end)
+
+                task.wait(0.2)
+
+                local char = LocalPlayer.Character
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+
+                -- tamanho gigante
+                if humanoid then
+                    humanoid.BodyDepthScale.Value = 4
+                    humanoid.BodyHeightScale.Value = 4
+                    humanoid.BodyWidthScale.Value = 4
+                    humanoid.HeadScale.Value = 4
+                end
+
+                -- animaÃ§Ãµes extremamente rÃ¡pidas
+                local anims = {
+                    "rbxassetid://70883871260184",
+                    "rbxassetid://3695333486",
+                    "rbxassetid://913402848",
+                    "rbxassetid://507766666",
+                    "rbxassetid://616006778"
+                }
+
+                for _,id in pairs(anims) do
+
+                    local anim = Instance.new("Animation")
+                    anim.AnimationId = id
+
+                    local track = humanoid:LoadAnimation(anim)
+                    track.Priority = Enum.AnimationPriority.Action4
+                    track:Play(0.05,1,0.01)
+                    track:AdjustSpeed(10)
+
+                    table.insert(NukeHyperTracks, track)
+                end
+
+                -- loop insano
+                NukeHyperThread = task.spawn(function()
+
+                    while NukeHyperActive do
+
+                        for _,track in pairs(NukeHyperTracks) do
+                            pcall(function()
+                                track:AdjustSpeed(math.random(8,15))
+                            end)
+                        end
+
+                        pcall(function()
+                            ReplicatedStorage.Remotes.ChangeCharacterBody:InvokeServer({
+                                math.random(70000000000000,130000000000000),
+                                math.random(70000000000000,130000000000000),
+                                math.random(70000000000000,130000000000000),
+                                math.random(70000000000000,130000000000000),
+                                math.random(70000000000000,130000000000000),
+                                120668655481073
+                            })
+                        end)
+
+                        task.wait(0.05)
+
+                    end
+
+                end)
+
+            else
+
+                NukeHyperActive = false
+
+                if NukeHyperThread then
+                    task.cancel(NukeHyperThread)
+                    NukeHyperThread = nil
+                end
+
+                stopTracks(NukeHyperTracks)
+                restoreBody(NukeHyperSavedBody)
+
+                local char = LocalPlayer.Character
+                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+
+                if humanoid then
+                    humanoid.BodyDepthScale.Value = 1
+                    humanoid.BodyHeightScale.Value = 1
+                    humanoid.BodyWidthScale.Value = 1
+                    humanoid.HeadScale.Value = 1
+                end
+
+                if not NukeActive and not SkyboxActive then
+                    executeFinalRestore()
+                end
+
+            end
+
+        end
+    })
+end
+
+
+
+
+--====================================================
+-- N U K E  H Y P E R  A P E L Ãƒ O
+
+
+do
+    local initialized = false
+    local HyperTracks = {}
+    local HyperSavedBody = {}
+    local HyperActive = false
+    local HyperLoop
+
+    skyboxTab:AddToggle({
+        Name = "Nuke | skybox",
+        Default = false,
+        Callback = function(value)
+
+            if not initialized and value == false then
+                initialized = true
+                return
+            end
+            initialized = true
+
+            if value then
+
+                RestoreExecuted = false
+
+                -- desativa outros
+                if NukeActive then
+                    NukeActive = false
+                    stopTracks(NukeTracks)
+                    restoreBody(NukeSavedBody)
+                end
+
+                if SkyboxActive then
+                    SkyboxActive = false
+                    stopTracks(SkyboxTracks)
+                    restoreBody(SkyboxSavedBody)
+                end
+
+                HyperActive = true
+
+                saveBody(HyperSavedBody)
+
+                task.wait(0.1)
+
+                pcall(function()
+                    ReplicatedStorage.Remotes.ChangeCharacterBody:InvokeServer({
+                        96655874457685,
+                        123402086843885,
+                        100839513065432,
+                        78300682916056,
+                        86276701020724,
+                        120668655481073
+                    })
+                end)
+
+                task.wait(0.2)
+
+                HyperLoop = task.spawn(function()
+
+                    while HyperActive do
+
+                        local anims = {
+                            "rbxassetid://70883871260184",
+                            "rbxassetid://3695333486",
+                            "rbxassetid://148840371",
+                            "rbxassetid://507777826"
+                        }
+
+                        for _,id in pairs(anims) do
+
+                            if not HyperActive then break end
+
+                            local anim = Instance.new("Animation")
+                            anim.AnimationId = id
+
+                            local track = humanoid:LoadAnimation(anim)
+                            track.Priority = Enum.AnimationPriority.Action4
+                            track:Play(0.05,1,0.01)
+                            track:AdjustSpeed(3)
+
+                            table.insert(HyperTracks, track)
+
+                            task.wait(0.1)
+                        end
+
+                        task.wait(0.3)
+
+                    end
+
+                end)
+
+            else
+
+                HyperActive = false
+
+                stopTracks(HyperTracks)
+                restoreBody(HyperSavedBody)
+
+                if not NukeActive and not SkyboxActive then
+                    executeFinalRestore()
+                end
+
+            end
+        end
+    })
+end
+
+
+
+
+
+--====================================================
+-- N U K E  G I G A N T E  S P I N
+
+do
+    local initialized = false
+    local GiantActive = false
+    local GiantSavedBody = {}
+    local GiantTracks = {}
+    local GiantLoop
+    local SpinLoop
+
+    -- IDs que vocÃª pode trocar
+    local BodyIDs = {
+        {96655874457685,123402086843885,100839513065432,78300682916056,86276701020724,120668655481073},
+        {123402086843885,96655874457685,78300682916056,86276701020724,100839513065432,120668655481073},
+        {100839513065432,78300682916056,123402086843885,96655874457685,86276701020724,120668655481073},
+    }
+
+    -- velocidade do spin
+    local SpinSpeed = 99999999999
+
+    skyboxTab:AddToggle({
+        Name = "Nuke spin",
+        Default = false,
+
+        Callback = function(value)
+
+            if not initialized and value == false then
+                initialized = true
+                return
+            end
+            initialized = true
+
+            if value then
+
+                RestoreExecuted = false
+
+                if NukeActive then
+                    NukeActive = false
+                    stopTracks(NukeTracks)
+                    restoreBody(NukeSavedBody)
+                end
+
+                if SkyboxActive then
+                    SkyboxActive = false
+                    stopTracks(SkyboxTracks)
+                    restoreBody(SkyboxSavedBody)
+                end
+
+                GiantActive = true
+                saveBody(GiantSavedBody)
+
+                task.wait(0.2)
+
+                local char = LocalPlayer.Character
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                local root = char:FindFirstChild("HumanoidRootPart")
+
+                -- animaÃ§Ã£o
+                local anim = Instance.new("Animation")
+                anim.AnimationId = "rbxassetid://70883871260184"
+
+                local track = humanoid:LoadAnimation(anim)
+                track.Priority = Enum.AnimationPriority.Action4
+                track:Play(0.05,1,0.01)
+                track:AdjustSpeed(8)
+
+                table.insert(GiantTracks, track)
+
+                -- SPIN
+                SpinLoop = task.spawn(function()
+
+                    while GiantActive do
+                        if root then
+                            root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(SpinSpeed), 0)
+                        end
+                        task.wait()
+                    end
+
+                end)
+
+                -- LOOP Nuke
+                GiantLoop = task.spawn(function()
+
+                    while GiantActive do
+
+                        for _,ids in pairs(BodyIDs) do
+                            pcall(function()
+                                ReplicatedStorage.Remotes.ChangeCharacterBody:InvokeServer(ids)
+                            end)
+                        end
+
+                        track:AdjustSpeed(math.random(7,12))
+
+                        task.wait(0.01)
+
+                    end
+
+                end)
+
+            else
+
+                GiantActive = false
+
+                if GiantLoop then
+                    task.cancel(GiantLoop)
+                end
+
+                if SpinLoop then
+                    task.cancel(SpinLoop)
+                end
+
+                stopTracks(GiantTracks)
+                restoreBody(GiantSavedBody)
+
+                if not NukeActive and not SkyboxActive then
+                    executeFinalRestore()
+                end
+
+            end
+
+        end
+    })
+end
+
+
 
 --====================================================
 -- S K Y B O X
@@ -2525,7 +2925,7 @@ do
                 table.insert(SkyboxTracks, t1)
                 task.wait(0.4)
                 local a2 = Instance.new("Animation")
-                a2.AnimationId = "rbxassetid://369533346"  --注意: ID diferente do Nuke
+                a2.AnimationId = "rbxassetid://369533346"  --æ³¨æ„: ID diferente do Nuke
                 local t2 = humanoid:LoadAnimation(a2)
                 t2.Priority = Enum.AnimationPriority.Movement
                 t2:Play()
@@ -2546,11 +2946,157 @@ end
 
 
 
+
+--====================================================
+-- S K Y B O X  G I G A N T E  +  S P I N
+
+do
+    local initialized = false
+    local SkyGiantActive = false
+    local SkyGiantSavedBody = {}
+    local SkyGiantTracks = {}
+    local SkyGiantLoop
+    local SpinLoop
+
+    -- VELOCIDADE DO SPIN (pode colocar 9999999)
+    local SpinSpeed = 99999999
+
+    skyboxTab:AddToggle({
+        Name = "Skybox Spin",
+        Default = false,
+
+        Callback = function(value)
+
+            if not initialized and value == false then
+                initialized = true
+                return
+            end
+            initialized = true
+
+            if value then
+
+                RestoreExecuted = false
+
+                if NukeActive then
+                    NukeActive = false
+                    stopTracks(NukeTracks)
+                    restoreBody(NukeSavedBody)
+                end
+
+                SkyGiantActive = true
+                saveBody(SkyGiantSavedBody)
+
+                task.wait(0.2)
+
+                ReplicatedStorage.Remotes.ChangeCharacterBody:InvokeServer({
+                    100839513065432,
+                    nil,nil,nil,nil,nil
+                })
+
+                task.wait(0.2)
+
+                local char = LocalPlayer.Character
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                local root = char:FindFirstChild("HumanoidRootPart")
+
+                -- animaÃ§Ã£o
+                local anim = Instance.new("Animation")
+                anim.AnimationId = "rbxassetid://70883871260184"
+
+                local track = humanoid:LoadAnimation(anim)
+                track.Priority = Enum.AnimationPriority.Action4
+                track:Play(0.05,1,0.01)
+
+                table.insert(SkyGiantTracks, track)
+
+                -- SPIN
+                SpinLoop = task.spawn(function()
+
+                    while SkyGiantActive do
+
+                        if root then
+                            root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(SpinSpeed), 0)
+                        end
+
+                        task.wait()
+
+                    end
+
+                end)
+
+                -- PULSO
+                SkyGiantLoop = task.spawn(function()
+
+                    local size = 3
+                    local grow = true
+
+                    while SkyGiantActive do
+
+                        humanoid.BodyDepthScale.Value = size
+                        humanoid.BodyHeightScale.Value = size
+                        humanoid.BodyWidthScale.Value = size
+                        humanoid.HeadScale.Value = size
+
+                        if grow then
+                            size = size + 0.1
+                            if size >= 6 then
+                                grow = false
+                            end
+                        else
+                            size = size - 0.1
+                            if size <= 2 then
+                                grow = true
+                            end
+                        end
+
+                        task.wait(0.03)
+
+                    end
+
+                end)
+
+            else
+
+                SkyGiantActive = false
+
+                if SkyGiantLoop then
+                    task.cancel(SkyGiantLoop)
+                end
+
+                if SpinLoop then
+                    task.cancel(SpinLoop)
+                end
+
+                stopTracks(SkyGiantTracks)
+                restoreBody(SkyGiantSavedBody)
+
+                local char = LocalPlayer.Character
+                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+
+                if humanoid then
+                    humanoid.BodyDepthScale.Value = 1
+                    humanoid.BodyHeightScale.Value = 1
+                    humanoid.BodyWidthScale.Value = 1
+                    humanoid.HeadScale.Value = 1
+                end
+
+                if not NukeActive and not SkyboxActive then
+                    executeFinalRestore()
+                end
+
+            end
+
+        end
+    })
+end
+
+skyboxTab:AddSection({"outros"})
+
 --------------------------------------------------
--- BOTÃO TRANSPARENTE
+-- BOTÃƒO TRANSPARENTE
 
 skyboxTab:AddButton({
-    Name = "Transparente",
+    Name = "roupa Transparente",
     Callback = function()
 
         local Players = game:GetService("Players")
@@ -2586,7 +3132,7 @@ skyboxTab:AddButton({
 
         else
 
-            warn("Já está com a roupa transparente completa")
+            warn("JÃ¡ estÃ¡ com a roupa transparente completa")
 
         end
 
@@ -2656,6 +3202,7 @@ skyboxTab:AddToggle({
     end
 
 })
+
 
 
 
